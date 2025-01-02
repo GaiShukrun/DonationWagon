@@ -1,45 +1,76 @@
 import { Tabs } from 'expo-router';
+import { router } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Home, TruckIcon, Calendar, User,HeartHandshake } from 'lucide-react-native';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+const windowWidth = Dimensions.get('window').width;
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+    <>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarShowLabel: false,
+        }}>
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="donate" />
+        <Tabs.Screen name="schedule" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+
+      {/* Bottom Navigation Bar - Exactly as it was in DonationScreen */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+        style={styles.navItem}
+        onPress={() => router.push("/LandingPage")}>
+          
+          <Home color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/Donate")}
+        >
+          <HeartHandshake color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Donate</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Calendar color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Schedule</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <User color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    borderTopWidth: 1, // Made border slightly thicker
+    borderTopColor: '#2D5A27', // Changed to your red color
+    shadowColor: '#000', // Added shadow for better definition
+  },
+  navItem: {
+    alignItems: 'center',
+  },
+  navText: {
+    fontSize: 12,
+    marginTop: 4,
+    color: '#2D5A27',
+  },
+});
