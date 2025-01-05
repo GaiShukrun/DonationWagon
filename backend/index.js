@@ -10,12 +10,8 @@ connectDB();
 const app = express();
 
 app.use(cors({
-    origin: [
-        'http://localhost:19006',
-        'http://localhost:19000', 
-        'http://localhost:8081',
-        'http://localhost:3000'
-    ],
+    origin: '*',
+
     credentials: true
 }));
 
@@ -27,13 +23,24 @@ app.post('/signup', async (req, res) => {
     console.log('Received signup request:', req.body); // Add this for debugging
 
     try {
-        const { username, password, firstname, lastname, securityQuestion, securityAnswer } = req.body;
+        const { username, password, firstname, lastname } = req.body;
 
         // Validate required fields
-        if (!username || !password || !firstname || !lastname || !securityQuestion || !securityAnswer) {
+        if (!username || !password || !firstname || !lastname ) {
             return res.status(400).json({ 
                 message: 'All fields are required',
                 received: req.body 
+            });
+        }
+        if (username.length < 4 || !/^[a-zA-Z]/.test(username)) {
+            return res.status(400).json({ 
+                message: 'Username must be at least 4 characters and start with a letter' 
+            });
+        }
+        
+        if (password.length < 6 || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            return res.status(400).json({ 
+                message: 'Password must be at least 6 characters and contain at least one special character' 
             });
         }
 
@@ -53,8 +60,6 @@ app.post('/signup', async (req, res) => {
             password: hashedPassword,
             firstname,
             lastname,
-            securityQuestion,
-            securityAnswer: securityAnswer.toLowerCase()
         });
 
         await newUser.save();

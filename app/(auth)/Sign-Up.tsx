@@ -22,8 +22,6 @@ interface FormData {
   confirmPassword: string;
   firstname: string;
   lastname: string;
-  securityQuestion: string;
-  securityAnswer: string;
 }
 
 const SignUp = () => {
@@ -33,8 +31,7 @@ const SignUp = () => {
     confirmPassword: '',
     firstname: '',
     lastname: '',
-    securityQuestion: '',
-    securityAnswer: ''
+
   });
 
   const [errors, setErrors] = useState<Partial<FormData>>({});
@@ -42,15 +39,23 @@ const SignUp = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<FormData> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
+   
+  if (!formData.username.trim()) {
+    newErrors.username = 'Username is required';
+  } else if (formData.username.length < 4) {
+    newErrors.username = 'Username must be at least 4 characters';
+  } else if (!/^[a-zA-Z]/.test(formData.username)) {
+    newErrors.username = 'Username must begin with a letter';
+  }
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+  
+  if (!formData.password) {
+    newErrors.password = 'Password is required';
+  } else if (formData.password.length < 6) {
+    newErrors.password = 'Password must be at least 6 characters';
+  } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+    newErrors.password = 'Password must contain at least one special character';
+  }
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
@@ -64,14 +69,7 @@ const SignUp = () => {
       newErrors.lastname = 'Last name is required';
     }
 
-    if (!formData.securityQuestion.trim()) {
-      newErrors.securityQuestion = 'Security question is required';
-    }
-
-    if (!formData.securityAnswer.trim()) {
-      newErrors.securityAnswer = 'Security answer is required';
-    }
-
+   
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -82,7 +80,7 @@ const SignUp = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/signup', {
+      const response = await fetch('http://10.0.0.20:3000/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,8 +90,7 @@ const SignUp = () => {
           password: formData.password,
           firstname: formData.firstname,
           lastname: formData.lastname,
-          securityQuestion: formData.securityQuestion,
-          securityAnswer: formData.securityAnswer,
+
         }),
       });
 
@@ -169,23 +166,7 @@ const SignUp = () => {
             />
             {errors.lastname && <Text style={styles.errorText}>{errors.lastname}</Text>}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Security Question"
-              placeholderTextColor="#666"
-              value={formData.securityQuestion}
-              onChangeText={(text) => setFormData({ ...formData, securityQuestion: text })}
-            />
-            {errors.securityQuestion && <Text style={styles.errorText}>{errors.securityQuestion}</Text>}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Security Answer"
-              placeholderTextColor="#666"
-              value={formData.securityAnswer}
-              onChangeText={(text) => setFormData({ ...formData, securityAnswer: text })}
-            />
-            {errors.securityAnswer && <Text style={styles.errorText}>{errors.securityAnswer}</Text>}
+          
           </View>
 
           <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
