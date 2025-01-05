@@ -6,8 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { View } from 'react-native';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -28,12 +28,21 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
+      <View style={{ flex: 1, backgroundColor: 'black' }}>
+        <StatusBar backgroundColor="black" style="light" />
+        <Stack 
+          screenOptions={{
+            headerShown: false,
+            navigationBarHidden: true,
+            contentStyle: { backgroundColor: '#FAF3F0' }
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }}/>
+          <Stack.Screen name="+not-found" options={{ headerShown: false }}/>
+        </Stack>
+      </View>
     </ThemeProvider>
   );
 }
