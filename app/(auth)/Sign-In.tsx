@@ -6,38 +6,48 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 
 const windowWidth = Dimensions.get('window').width;
 
 export default function SignIn() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const { login } = useAuth();
 
   const handleSignIn = async () => {
+    if (!username || !password) {
+      setErrorMessage('Please enter both username and password');
+      setShowErrorMessage(true);
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const response = await fetch('http://localhost:3000/api/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
+      // Call the login function with credentials
+      await login({
+        username,
+        password
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Navigate to main app
-        router.push('/(tabs)/LandingPage');
-      } else {
-        Alert.alert('Error', data.error || 'Sign in failed');
-      }
+      
+      // Show success message and redirect
+      setShowSuccessMessage(true);
+      // Router.replace will be handled by the AuthRedirectMessage component
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Connection failed');
+      setErrorMessage(error instanceof Error ? error.message : 'Sign in failed. Please try again.');
+      setShowErrorMessage(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -72,8 +82,13 @@ export default function SignIn() {
         <TouchableOpacity 
           style={styles.signInButton}
           onPress={handleSignIn}
+          disabled={isLoading}
         >
-          <Text style={styles.signInButtonText}>Sign In</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          )}
         </TouchableOpacity>
 
         {/* Register Link */}
@@ -89,10 +104,34 @@ export default function SignIn() {
         {/* Forgot Password */}
         <TouchableOpacity 
           style={styles.forgotPassword}
-       //   onPress={() => router.push('/forgot-password')}
+          onPress={() => router.push('/(auth)/ForgotPassword')}
         >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Success Message */}
+      <AuthRedirectMessage
+        visible={showSuccessMessage}
+        message="Sign in successful!"
+        redirectPath="/"
+        redirectText="Redirecting to home page..."
+        onClose={() => setShowSuccessMessage(false)}
+      />
+
+      {/* Error Message */}
+      <View style={styles.errorContainer}>
+        {showErrorMessage && (
+          <View style={styles.errorMessage}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowErrorMessage(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -106,64 +145,92 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    paddingTop: 60,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#2D5A27',
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 40,
+    marginBottom: 30,
     textAlign: 'center',
   },
   inputContainer: {
-    gap: 16,
-    marginBottom: 24,
+    width: '100%',
+    maxWidth: 400,
+    marginBottom: 30,
   },
   input: {
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    fontSize: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    fontSize: 16,
   },
   signInButton: {
     backgroundColor: '#BE3E28',
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    padding: 15,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: 400,
   },
   signInButtonText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   registerLink: {
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   registerText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
   },
   registerTextBold: {
+    fontWeight: 'bold',
     color: '#2D5A27',
-    fontWeight: '600',
   },
   forgotPassword: {
-    alignItems: 'center',
+    marginTop: 10,
   },
   forgotPasswordText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#BE3E28',
     textDecorationLine: 'underline',
+  },
+  errorContainer: {
+    padding: 20,
+  },
+  errorMessage: {
+    backgroundColor: '#FFC080',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+  },
+  closeButton: {
+    backgroundColor: '#BE3E28',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#fff',
   },
 });
