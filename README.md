@@ -1,50 +1,85 @@
-# Welcome to your Expo app 👋
+# Circle of Giving App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile application for managing donations and scheduling pickup/delivery of donated items.
 
-## Get started
+## Quick Start
 
-1. Install dependencies
+The easiest way to start the app is to use the included batch file:
+
+```bash
+start-app.bat
+```
+
+This will start both the backend server and the Expo development server in separate windows.
+
+## Manual Setup
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Start the backend server with hot reloading:
 
    ```bash
-    npx expo start
+   npm run dev
    ```
 
-In the output, you'll find options to open the app in a
+### Frontend Setup
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. From the project root, install dependencies:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ```bash
+   npm install
+   ```
 
-## Get a fresh project
+2. Start the Expo development server:
 
-When you're ready, run:
+   ```bash
+   npx expo start --clear
+   ```
 
-```bash
-npm run reset-project
-```
+## Development Features
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Hot Reloading
 
-## Learn more
+- **Backend**: Uses nodemon to automatically restart when files change
+- **Frontend**: Uses Expo's fast refresh to update the app without restarting
 
-To learn more about developing your project with Expo, look at the following resources:
+### Error Handling
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- The app is configured to suppress development error overlays
+- Custom error handling is implemented through the ErrorBoundary component
+- API requests are handled through a custom useApi hook for consistent error management
 
-## Join the community
+## Authentication Flow
 
-Join our community of developers creating universal apps.
+1. Any user can access the landing page without authentication
+2. When a non-signed-in user tries to navigate to other sections (Donate, Schedule, Profile) or interact with buttons on the landing page, they are redirected to sign in first
+3. The authentication state is persisted using AsyncStorage
+4. The AuthContext provides authentication-related functionality throughout the app
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Tech Stack
+
+- **Frontend**: React Native with Expo
+- **Backend**: Express.js
+- **Database**: MongoDB
+- **Authentication**: JWT tokens with bcrypt password hashing
+
+## Troubleshooting
+
+If you encounter connection issues:
+
+1. Make sure both the backend and frontend servers are running
+2. Verify that the API URL in `hooks/useApi.js` matches your local network IP
+3. Check that CORS is properly configured in the backend
+4. Restart both servers using the `start-app.bat` script
