@@ -2,11 +2,28 @@ import { Tabs } from 'expo-router';
 import { router } from 'expo-router';
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { Home, TruckIcon, Calendar, User,HeartHandshake } from 'lucide-react-native';
+import { Home, TruckIcon, Calendar, User, HeartHandshake } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 
 const windowWidth = Dimensions.get('window').width;
 
 export default function TabLayout() {
+  const { requireAuth } = useAuth();
+
+  // Add proper type annotations for parameters
+  const handleNavigation = (route: string, message?: string) => {
+    if (route === '/') {
+      // Allow direct navigation to home
+      router.push('/');
+      return;
+    }
+    
+    // For other routes, check authentication with custom message
+    requireAuth(() => {
+      router.push(route);
+    }, message);
+  };
+
   return (
     <>
       <Tabs
@@ -23,25 +40,39 @@ export default function TabLayout() {
       {/* Bottom Navigation Bar - Exactly as it was in DonationScreen */}
       <View style={styles.bottomNav}>
         <TouchableOpacity 
-        style={styles.navItem}
-        onPress={() => router.push("/LandingPage")}>
-          
+          style={styles.navItem}
+          onPress={() => handleNavigation('/')}
+        >
           <Home color="#2D5A27" size={24} />
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => router.push("/Donate")}
+          onPress={() => handleNavigation('/donate', 'Please sign in to access donation features')}
         >
           <HeartHandshake color="#2D5A27" size={24} />
           <Text style={styles.navText}>Donate</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => requireAuth(
+            () => router.push('schedule'), 
+            'Please sign in to access your donation schedule'
+          )}
+        >
           <Calendar color="#2D5A27" size={24} />
           <Text style={styles.navText}>Schedule</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => requireAuth(
+            () => router.push('profile'),
+            'Please sign in to view your profile'
+          )}
+        >
           <User color="#2D5A27" size={24} />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
@@ -61,16 +92,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    borderTopWidth: 1, // Made border slightly thicker
-    borderTopColor: '#2D5A27', // Changed to your red color
-    shadowColor: '#000', // Added shadow for better definition
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingHorizontal: 10,
   },
   navItem: {
     alignItems: 'center',
+    justifyContent: 'center',
+    width: windowWidth / 4 - 10,
   },
   navText: {
     fontSize: 12,
-    marginTop: 4,
     color: '#2D5A27',
+    marginTop: 4,
   },
 });
