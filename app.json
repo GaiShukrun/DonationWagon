@@ -36,6 +36,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "development": {
+      "suppressLogs": true,
+      "disableErrorOverlay": true,
+      "fastRefresh": true,
+      "minifyEnabled": false
     }
   }
 }
