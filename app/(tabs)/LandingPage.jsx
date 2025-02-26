@@ -1,6 +1,7 @@
 // DonationScreen.js
-import React , {useState} from 'react';
+import React, { useState } from 'react';
 import { router } from 'expo-router';  
+import { useAuth } from '@/context/AuthContext';
 
 import {
   View,
@@ -11,33 +12,79 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  
 } from 'react-native';
-import {GiftIcon, BabyIcon,ShirtIcon } from 'lucide-react-native';
+import { GiftIcon, BabyIcon, ShirtIcon, LogOutIcon, CalendarIcon } from 'lucide-react-native';
 
 const windowWidth = Dimensions.get('window').width;
 
 const DonationScreen = () => {
+  const { requireAuth, isUserLoggedIn, logout } = useAuth();
+
+  const handleCategoryPress = (category) => {
+    requireAuth(
+      () => {
+        // Navigate to the donation flow with the selected category
+        console.log(`Selected category: ${category}`);
+        // Implement navigation to the specific donation flow
+      },
+      `Please sign in to donate ${category.toLowerCase()}`
+    );
+  };
+
+  const handleRewardsPress = () => {
+    requireAuth(
+      () => {
+        // Navigate to rewards page
+        console.log('Navigate to rewards page');
+      },
+      'Sign in to view and manage your rewards'
+    );
+  };
+
+  const handleSignOut = () => {
+    logout();
+  };
+
+  const handleSchedulePickup = () => {
+    requireAuth(
+      () => {
+        // Navigate to schedule pickup page
+        console.log('Navigate to schedule pickup page');
+      },
+      'Please sign in to schedule a pickup'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Main Content */}
       <ScrollView style={styles.content}>
-        {/* Header */}
+        {/* Header - removed */}
         <View style={styles.header}>
-         
-          <TouchableOpacity style={styles.rewardsButton}>
-            <Text style={styles.rewardsText}>300 Points</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Quick Donation Section */}
         <View style={styles.donationSection}>
-          <Text style={styles.title}>Ready to Donate?</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Ready to Donate?</Text>
+            {isUserLoggedIn && (
+              <TouchableOpacity 
+                style={styles.signOutButton}
+                onPress={handleSignOut}
+              >
+                <LogOutIcon color="white" size={16} style={styles.signOutIcon} />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.subtitle}>Choose a donation category</Text>
 
           {/* Donation Categories */}
           <View style={styles.categories}>
-            <TouchableOpacity style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}>
+            <TouchableOpacity 
+              style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
+              onPress={() => handleCategoryPress('Infant Toys')}
+            >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                 <BabyIcon color="white" size={32} />
               </View>
@@ -45,26 +92,32 @@ const DonationScreen = () => {
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}>
+            <TouchableOpacity 
+              style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
+              onPress={() => handleCategoryPress('Clothing')}
+            >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                 <ShirtIcon color="white" size={32} />
               </View>
-              {/* <Text style={[styles.categoryTitle, { color: 'white' }]}>Earn Rewards</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Points for every donation</Text> */}
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
-              
             </TouchableOpacity>
           </View>
 
-          {/* Schedule Pickup Button */}
-          <TouchableOpacity style={styles.scheduleButton}
-          // onPress={handleSchedulePickup}>
-          onPress={() => router.push("/(auth)/Sign-In")}>
-            <Text style={styles.scheduleButtonText}> Schedule a Pickup  </Text>
+          {/* Schedule Pickup Button - now as a category card */}
+          <TouchableOpacity 
+            style={[styles.categoryCard, { backgroundColor: '#F5A623', width: '100%', marginBottom: 24 }]}
+            onPress={handleSchedulePickup}
+          >
+            <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+              <CalendarIcon color="white" size={32} />
+            </View>
+            <Text style={[styles.categoryTitle, { color: 'white' }]}>Schedule a Pickup</Text>
+            <Text style={[styles.categoryDescription, { color: 'white' }]}>Request a convenient pickup time</Text>
           </TouchableOpacity>
-        {/* Leaderboard Section */}
-        <View style={styles.leaderboardContainer}>
+
+          {/* Leaderboard Section */}
+          <View style={styles.leaderboardContainer}>
             <View style={styles.leaderboardHeader}>
               <Text style={styles.leaderboardTitle}>Leaderboard</Text>
               <TouchableOpacity style={styles.viewAllButton}>
@@ -152,21 +205,32 @@ const styles = StyleSheet.create({
  
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FCF2E9',
-
   },
-  rewardsButton: {
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  signOutButton: {
     backgroundColor: '#BE3E28',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  rewardsText: {
+  signOutText: {
     color: 'white',
     fontWeight: '600',
+    marginLeft: 4,
+  },
+  signOutIcon: {
+    marginRight: 4,
   },
   donationSection: {
     padding: 16,
@@ -214,18 +278,6 @@ const styles = StyleSheet.create({
   categoryDescription: {
     fontSize: 14,
     textAlign: 'center',
-  },
-  scheduleButton: {
-    backgroundColor: '#BE3E28',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  scheduleButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
