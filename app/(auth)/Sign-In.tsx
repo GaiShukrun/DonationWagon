@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,12 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -22,7 +24,23 @@ export default function SignIn() {
   const [showErrorMessage, setShowErrorMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const backAction = () => {
+      router.replace('/');
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   const handleSignIn = async () => {
     if (!username || !password) {
@@ -34,15 +52,12 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      // Call the login function with credentials
       await login({
         username,
         password
       });
       
-      // Show success message and redirect
       setShowSuccessMessage(true);
-      // Router.replace will be handled by the AuthRedirectMessage component
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Sign in failed. Please try again.');
       setShowErrorMessage(true);
@@ -51,14 +66,27 @@ export default function SignIn() {
     }
   };
 
+  const handleBackToLanding = () => {
+    router.replace('/');
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Header */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBackToLanding}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue donating</Text>
 
-        {/* Input Fields */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -68,17 +96,27 @@ export default function SignIn() {
             onChangeText={setUsername}
             autoCapitalize="none"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#666"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#666"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={togglePasswordVisibility}
+            >
+              {showPassword ? 
+                <EyeOff color="#666" size={20} /> : 
+                <Eye color="#666" size={20} />
+              }
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Sign In Button */}
         <TouchableOpacity 
           style={styles.signInButton}
           onPress={handleSignIn}
@@ -91,7 +129,6 @@ export default function SignIn() {
           )}
         </TouchableOpacity>
 
-        {/* Register Link */}
         <TouchableOpacity 
           style={styles.registerLink}
           onPress={() => router.push("/(auth)/Sign-Up")}
@@ -101,7 +138,6 @@ export default function SignIn() {
           </Text>
         </TouchableOpacity>
 
-        {/* Forgot Password */}
         <TouchableOpacity 
           style={styles.forgotPassword}
           onPress={() => router.push('/(auth)/ForgotPassword')}
@@ -110,7 +146,6 @@ export default function SignIn() {
         </TouchableOpacity>
       </View>
 
-      {/* Success Message */}
       <AuthRedirectMessage
         visible={showSuccessMessage}
         message="Sign in successful!"
@@ -119,7 +154,6 @@ export default function SignIn() {
         onClose={() => setShowSuccessMessage(false)}
       />
 
-      {/* Error Message */}
       <View style={styles.errorContainer}>
         {showErrorMessage && (
           <View style={styles.errorMessage}>
@@ -149,6 +183,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    padding: 10,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2D5A27',
+    fontWeight: '600',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -176,6 +221,28 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     fontSize: 16,
   },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  passwordInput: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    fontSize: 16,
+    paddingRight: 50, // Make room for the eye icon
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    height: 20,
+    width: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   signInButton: {
     backgroundColor: '#BE3E28',
     borderRadius: 8,
@@ -202,7 +269,7 @@ const styles = StyleSheet.create({
     color: '#2D5A27',
   },
   forgotPassword: {
-    marginTop: 10,
+    marginBottom: 20,
   },
   forgotPasswordText: {
     fontSize: 16,
@@ -210,27 +277,38 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   errorContainer: {
-    padding: 20,
-  },
-  errorMessage: {
-    backgroundColor: '#FFC080',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 10,
-  },
-  closeButton: {
-    backgroundColor: '#BE3E28',
-    padding: 10,
-    borderRadius: 8,
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
   },
-  closeButtonText: {
+  errorMessage: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    padding: 16,
+    width: '90%',
+    maxWidth: 400,
+    flexDirection: 'column',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D32F2F',
+  },
+  errorText: {
+    color: '#D32F2F',
     fontSize: 16,
-    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  closeButton: {
+    backgroundColor: '#D32F2F',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -12,30 +12,30 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 const windowWidth = Dimensions.get('window').width;
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // Step 1: Email, Step 2: Security Question
+  const [step, setStep] = useState(1); // Step 1: Username, Step 2: Security Question, Step 3: New Password
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showErrorMessage, setShowErrorMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { requestPasswordReset, verifySecurityQuestion } = useAuth();
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { requestPasswordReset, verifySecurityQuestion, resetPassword } = useAuth();
 
-  const handleEmailSubmit = async () => {
-    if (!email) {
-      setErrorMessage('Please enter your email address');
-      setShowErrorMessage(true);
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setErrorMessage('Please enter a valid email address');
+  const handleUsernameSubmit = async () => {
+    if (!username) {
+      setErrorMessage('Please enter your username');
       setShowErrorMessage(true);
       return;
     }
@@ -43,16 +43,13 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // Get the security question for this email
-      await requestPasswordReset(email);
-      
-      // Hardcode a security question for now
-      // In a real app, this would come from your backend
-      setSecurityQuestion("What was your first pet's name?");
+      // Get the security question for this username
+      const question = await requestPasswordReset(username);
+      setSecurityQuestion(question);
       setStep(2); // Move to security question step
     } catch (error) {
       console.error('Error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to find account with that email. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to find account with that username. Please try again.');
       setShowErrorMessage(true);
     } finally {
       setIsLoading(false);
@@ -70,9 +67,8 @@ export default function ForgotPassword() {
 
     try {
       // Verify the security answer
-      await verifySecurityQuestion(email, securityAnswer);
-      setSuccessMessage(`We've sent password reset instructions to ${email}. Please check your inbox.`);
-      setShowSuccessMessage(true);
+      await verifySecurityQuestion(username, securityAnswer);
+      setStep(3); // Move to new password step
     } catch (error) {
       console.error('Error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Incorrect answer. Please try again.');
@@ -82,9 +78,45 @@ export default function ForgotPassword() {
     }
   };
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  const handlePasswordReset = async () => {
+    if (!newPassword) {
+      setErrorMessage('Please enter a new password');
+      setShowErrorMessage(true);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setErrorMessage('Password must be at least 6 characters');
+      setShowErrorMessage(true);
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      setErrorMessage('Password must contain at least one special character');
+      setShowErrorMessage(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      setShowErrorMessage(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Reset the password
+      await resetPassword(newPassword);
+      setSuccessMessage('Your password has been reset successfully. You can now sign in with your new password.');
+      setShowSuccessMessage(true);
+    } catch (error) {
+      console.error('Error:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to reset password. Please try again.');
+      setShowErrorMessage(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -95,25 +127,24 @@ export default function ForgotPassword() {
         
         {step === 1 ? (
           <>
-            <Text style={styles.subtitle}>Enter your email to reset your password</Text>
+            <Text style={styles.subtitle}>Enter your username to reset your password</Text>
 
             {/* Input Field */}
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="Email Address"
+                placeholder="Username"
                 placeholderTextColor="#666"
-                value={email}
-                onChangeText={setEmail}
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
-                keyboardType="email-address"
               />
             </View>
 
             {/* Continue Button */}
             <TouchableOpacity 
               style={styles.button}
-              onPress={handleEmailSubmit}
+              onPress={handleUsernameSubmit}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -123,7 +154,7 @@ export default function ForgotPassword() {
               )}
             </TouchableOpacity>
           </>
-        ) : (
+        ) : step === 2 ? (
           <>
             <Text style={styles.subtitle}>Answer your security question</Text>
             
@@ -139,10 +170,69 @@ export default function ForgotPassword() {
               />
             </View>
 
-            {/* Reset Button */}
+            {/* Verify Button */}
             <TouchableOpacity 
               style={styles.button}
               onPress={handleSecurityAnswerSubmit}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>Verify Answer</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.subtitle}>Create a new password</Text>
+            
+            <View style={styles.inputContainer}>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="New Password"
+                  placeholderTextColor="#666"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                />
+                <TouchableOpacity 
+                  style={styles.eyeIcon} 
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? 
+                    <EyeOff color="#666" size={20} /> : 
+                    <Eye color="#666" size={20} />
+                  }
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Confirm New Password"
+                  placeholderTextColor="#666"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity 
+                  style={styles.eyeIcon} 
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? 
+                    <EyeOff color="#666" size={20} /> : 
+                    <Eye color="#666" size={20} />
+                  }
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Reset Button */}
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={handlePasswordReset}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -233,6 +323,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     marginBottom: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingRight: 50, // Make room for the eye icon
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 12,
+    height: 20,
+    width: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
     backgroundColor: '#BE3E28',
