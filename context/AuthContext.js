@@ -5,7 +5,7 @@ import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 import { useApi } from '@/hooks/useApi';
 
 // API base URL
-const API_URL = 'http://10.0.0.20:3000';
+const API_URL = 'http://10.0.0.7:3000'; // Your computer's actual IP address
 
 // Create the Auth Context
 const AuthContext = createContext({
@@ -14,8 +14,8 @@ const AuthContext = createContext({
   login: async (userData) => {},
   logout: async () => {},
   requireAuth: (callback, message) => false,
-  requestPasswordReset: async (email) => {},
-  verifySecurityQuestion: async (email, answer) => {},
+  requestPasswordReset: async (username) => {},
+  verifySecurityQuestion: async (username, answer) => {},
   signUp: async (userData) => {},
   updateProfileImage: async (imageUri) => {},
 });
@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
   const [showAuthMessage, setShowAuthMessage] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
   const [token, setToken] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Use our custom API hook
   const api = useApi();
@@ -155,9 +156,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Request password reset function
-  const requestPasswordReset = async (email) => {
+  const requestPasswordReset = async (username) => {
     try {
-      const response = await api.post('/request-password-reset', { email });
+      const response = await api.post('/request-password-reset', { username });
       
       if (!response) {
         throw new Error(api.error || 'User not found');
@@ -171,10 +172,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Verify security question answer
-  const verifySecurityQuestion = async (email, answer) => {
+  const verifySecurityQuestion = async (username, answer) => {
     try {
       const response = await api.post('/verify-security-answer', { 
-        email, 
+        username, 
         answer 
       });
       
@@ -259,14 +260,28 @@ export const AuthProvider = ({ children }) => {
   // Function to check if user is authenticated and redirect if not
   const requireAuth = (callback, message = 'You need to sign in to access this feature') => {
     if (!isUserLoggedIn) {
+      // Prevent multiple redirects
+      if (isRedirecting) {
+        return false;
+      }
+      
+      setIsRedirecting(true);
+      
       // Show auth message
       setAuthMessage(message);
       setShowAuthMessage(true);
       
-      // Redirect to sign in screen only if we're not already there
+      // Use a single timeout for showing the message
       setTimeout(() => {
-        router.push('/(auth)/Sign-In');
-      }, 1500);
+        // Use router.replace instead of router.push to avoid stacking screens
+        router.replace('/(auth)/Sign-In');
+        
+        // Reset the redirection flag after a delay
+        setTimeout(() => {
+          setIsRedirecting(false);
+          setShowAuthMessage(false);
+        }, 500);
+      }, 1000);
       
       return false;
     }

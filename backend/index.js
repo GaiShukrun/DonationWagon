@@ -10,17 +10,23 @@ require('dotenv').config();
 connectDB();
 const app = express();
 
-// Configure CORS properly
+// Configure CORS to allow all origins
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
-    credentials: true
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Add a simple test endpoint
+app.get('/test', (req, res) => {
+    res.json({ message: 'API is working!' });
+});
 
 app.post('/signup', async (req, res) => {
     console.log('Received signup request:', req.body);
