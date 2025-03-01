@@ -22,6 +22,7 @@ export const AuthRedirectMessage: React.FC<AuthRedirectMessageProps> = ({
   const [opacity] = useState(new Animated.Value(0));
   const [modalVisible, setModalVisible] = useState(visible);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasRedirected = useRef(false);
 
   // Component cleanup on unmount
   useEffect(() => {
@@ -32,6 +33,8 @@ export const AuthRedirectMessage: React.FC<AuthRedirectMessageProps> = ({
       // Ensure modal is closed when component unmounts
       setModalVisible(false);
       if (onClose) onClose();
+      // Reset the redirection flag when component unmounts
+      hasRedirected.current = false;
     };
   }, []);
 
@@ -45,14 +48,16 @@ export const AuthRedirectMessage: React.FC<AuthRedirectMessageProps> = ({
         useNativeDriver: true,
       }).start();
 
-      // Only auto redirect if redirectText is provided
-      if (redirectText) {
+      // Only auto redirect if redirectText is provided and hasn't redirected yet
+      if (redirectText && !hasRedirected.current) {
+        hasRedirected.current = true; // Set flag to prevent multiple redirects
         timerRef.current = setTimeout(() => {
           handleClose();
           if (redirectPath) {
-            router.push(redirectPath);
+            // Use replace instead of push to avoid stacking screens
+            router.replace(redirectPath);
           }
-        }, 2000);
+        }, 1500);
 
         return () => {
           if (timerRef.current) {
@@ -64,6 +69,8 @@ export const AuthRedirectMessage: React.FC<AuthRedirectMessageProps> = ({
     } else {
       // When visible becomes false, animate out and close
       handleClose();
+      // Reset the redirection flag when modal is closed
+      hasRedirected.current = false;
     }
   }, [visible, redirectPath, redirectText]);
 
@@ -80,8 +87,10 @@ export const AuthRedirectMessage: React.FC<AuthRedirectMessageProps> = ({
 
   const handleCloseAndRedirect = () => {
     handleClose();
-    if (redirectPath && redirectText) {
-      router.push(redirectPath);
+    if (redirectPath && redirectText && !hasRedirected.current) {
+      hasRedirected.current = true;
+      // Use replace instead of push to avoid stacking screens
+      router.replace(redirectPath);
     }
   };
 
