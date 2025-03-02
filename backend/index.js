@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const User = require('./models/Users'); 
+const Donation = require('./models/Donation');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -323,6 +324,301 @@ app.put('/update-profile-image', async (req, res) => {
   } catch (error) {
     console.error('Error updating profile image:', error);
     return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Donation Endpoints
+// Save donation to cart
+app.post('/donations', async (req, res) => {
+  try {
+    const { userId, donationType, clothingItems, toyItems } = req.body;
+    
+    if (!userId || !donationType) {
+      return res.status(400).json({ message: 'User ID and donation type are required' });
+    }
+    
+    // Validate donation type
+    if (donationType !== 'clothes' && donationType !== 'toys') {
+      return res.status(400).json({ message: 'Invalid donation type' });
+    }
+    
+    // Validate items based on donation type
+    if (donationType === 'clothes' && (!clothingItems || clothingItems.length === 0)) {
+      return res.status(400).json({ message: 'Clothing items are required for clothes donation' });
+    }
+    
+    if (donationType === 'toys' && (!toyItems || toyItems.length === 0)) {
+      return res.status(400).json({ message: 'Toy items are required for toys donation' });
+    }
+    
+    // Create new donation
+    const newDonation = new Donation({
+      userId,
+      donationType,
+      status: 'pending',
+      clothingItems: donationType === 'clothes' ? clothingItems : [],
+      toyItems: donationType === 'toys' ? toyItems : []
+    });
+    
+    // Save donation
+    await newDonation.save();
+    
+    // Return success response
+    return res.status(201).json({ 
+      message: 'Donation saved successfully',
+      donation: newDonation
+    });
+    
+  } catch (error) {
+    console.error('Error saving donation:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get user's donations
+app.get('/donations/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID is required' 
+      });
+    }
+    
+    console.log('Fetching donations for userId:', userId);
+    
+    // Convert string userId to MongoDB ObjectId
+    const mongoose = require('mongoose');
+    let userObjectId;
+    
+    try {
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    } catch (err) {
+      console.error('Invalid ObjectId format:', err.message);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid user ID format' 
+      });
+    }
+    
+    // Find all donations for the user using ObjectId
+    const donations = await Donation.find({ userId: userObjectId }).sort({ createdAt: -1 });
+    
+    console.log(`Found ${donations.length} donations for user ${userId}`);
+    
+    // Return empty array if no donations found
+    return res.status(200).json({ 
+      success: true,
+      donations: donations || [] 
+    });
+    
+  } catch (error) {
+    console.error('Error fetching donations:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// Get a single donation by ID
+app.get('/donation/:donationId', async (req, res) => {
+  try {
+    const { donationId } = req.params;
+    
+    if (!donationId) {
+      return res.status(400).json({ message: 'Donation ID is required' });
+    }
+    
+    console.log('Fetching donation with ID:', donationId);
+    
+    // Convert string donationId to MongoDB ObjectId
+    const mongoose = require('mongoose');
+    let donationObjectId;
+    
+    try {
+      donationObjectId = new mongoose.Types.ObjectId(donationId);
+    } catch (err) {
+      console.error('Invalid ObjectId format:', err.message);
+      return res.status(400).json({ message: 'Invalid donation ID format' });
+    }
+    
+    // Find the donation
+    const donation = await Donation.findById(donationObjectId);
+    
+    if (!donation) {
+      return res.status(404).json({ message: 'Donation not found' });
+    }
+    
+    console.log('Donation found');
+    
+    return res.status(200).json({ donation });
+    
+  } catch (error) {
+    console.error('Error retrieving donation:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update donation status
+app.put('/donations/:donationId', async (req, res) => {
+  try {
+    const { donationId } = req.params;
+    const { status, pickupDate, pickupAddress, pickupNotes } = req.body;
+    
+    if (!donationId) {
+      return res.status(400).json({ message: 'Donation ID is required' });
+    }
+    
+    // Find donation
+    const donation = await Donation.findById(donationId);
+    
+    if (!donation) {
+      return res.status(404).json({ message: 'Donation not found' });
+    }
+    
+    // Update donation fields
+    if (status) donation.status = status;
+    if (pickupDate) donation.pickupDate = pickupDate;
+    if (pickupAddress) donation.pickupAddress = pickupAddress;
+    if (pickupNotes) donation.pickupNotes = pickupNotes;
+    
+    // Save updated donation
+    await donation.save();
+    
+    return res.status(200).json({ 
+      message: 'Donation updated successfully',
+      donation
+    });
+    
+  } catch (error) {
+    console.error('Error updating donation:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete a donation
+app.delete('/donation/:donationId', async (req, res) => {
+  try {
+    const { donationId } = req.params;
+    
+    if (!donationId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Donation ID is required' 
+      });
+    }
+    
+    console.log('Deleting donation with ID:', donationId);
+    
+    // Convert string donationId to MongoDB ObjectId
+    const mongoose = require('mongoose');
+    let donationObjectId;
+    
+    try {
+      donationObjectId = new mongoose.Types.ObjectId(donationId);
+    } catch (err) {
+      console.error('Invalid ObjectId format:', err.message);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid donation ID format' 
+      });
+    }
+    
+    // Find and delete the donation
+    const result = await Donation.findByIdAndDelete(donationObjectId);
+    
+    if (!result) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Donation not found' 
+      });
+    }
+    
+    console.log('Donation deleted successfully');
+    
+    return res.status(200).json({ success: true, message: 'Donation deleted successfully' });
+    
+  } catch (error) {
+    console.error('Error deleting donation:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// Schedule pickup for a donation
+app.post('/schedule-pickup', async (req, res) => {
+  try {
+    const { donationId, pickupDate, userId } = req.body;
+    
+    if (!donationId || !pickupDate || !userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Donation ID, pickup date, and user ID are required' 
+      });
+    }
+    
+    console.log('Scheduling pickup for donation:', donationId);
+    console.log('Pickup date:', pickupDate);
+    
+    // Convert string donationId to MongoDB ObjectId
+    const mongoose = require('mongoose');
+    let donationObjectId;
+    
+    try {
+      donationObjectId = new mongoose.Types.ObjectId(donationId);
+    } catch (err) {
+      console.error('Invalid ObjectId format:', err.message);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid donation ID format' 
+      });
+    }
+    
+    // Find the donation and update its status and pickup date
+    const donation = await Donation.findById(donationObjectId);
+    
+    if (!donation) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Donation not found' 
+      });
+    }
+    
+    // Verify that the donation belongs to the user
+    if (donation.userId.toString() !== userId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'You are not authorized to schedule this donation' 
+      });
+    }
+    
+    // Update the donation
+    donation.status = 'scheduled';
+    donation.pickupDate = new Date(pickupDate);
+    await donation.save();
+    
+    console.log('Pickup scheduled successfully');
+    
+    return res.status(200).json({ 
+      success: true,
+      message: 'Pickup scheduled successfully',
+      donation
+    });
+    
+  } catch (error) {
+    console.error('Error scheduling pickup:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
   }
 });
 

@@ -211,6 +211,47 @@ const DonationScreen = () => {
             </View>
           </View>
 
+          {/* How Donation Works Section */}
+          <View style={styles.howItWorksContainer}>
+            <Text style={styles.howItWorksTitle}>How Donation Works</Text>
+            
+            <View style={styles.stepContainer}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Take Photos & Provide Details</Text>
+                <Text style={styles.stepDescription}>
+                  Take clear photos of your item and fill in details so we know what you're donating.
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.stepContainer}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>2</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Submit Your Donation</Text>
+                <Text style={styles.stepDescription}>
+                  Submit your donation information and our team will review it.
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.stepContainer}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>3</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Earn Points & Schedule Pickup</Text>
+                <Text style={styles.stepDescription}>
+                  Once approved, you'll earn points and can schedule a convenient pickup time.
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {/* Mission Statement Section - Added as requested */}
           <View style={styles.missionContainer}>
             <Text style={styles.missionTitle}>Donate Your Used Clothes Today</Text>
@@ -458,6 +499,59 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     textAlign: 'center',
+  },
+  howItWorksContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  howItWorksTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D5A27',
+    marginBottom: 20,
+  },
+  stepContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  stepNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    marginRight: 12,
+  },
+  stepNumberText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D5A27',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D5A27',
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

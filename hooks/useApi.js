@@ -25,12 +25,16 @@ export const useApi = () => {
     setError(null);
     
     try {
+      console.log(`Making GET request to: ${API_URL}${endpoint}`);
       const response = await axios.get(`${API_URL}${endpoint}`, config);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
       return response.data;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
       setError(errorMessage);
-      console.log('API Error (GET):', errorMessage);
+      console.error('API Error (GET):', errorMessage);
+      console.error('Full error:', err);
       return null;
     } finally {
       setLoading(false);
@@ -62,6 +66,33 @@ export const useApi = () => {
   }, []);
 
   /**
+   * Make a DELETE request to the API
+   * @param {string} endpoint - API endpoint
+   * @param {Object} config - Axios config
+   * @returns {Promise<any>} Response data
+   */
+  const deleteRequest = useCallback(async (endpoint, config = {}) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`Making DELETE request to: ${API_URL}${endpoint}`);
+      const response = await axios.delete(`${API_URL}${endpoint}`, config);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      return response.data;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('API Error (DELETE):', errorMessage);
+      console.error('Full error:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
    * Clear any existing error
    */
   const clearError = useCallback(() => {
@@ -73,7 +104,8 @@ export const useApi = () => {
     error,
     clearError,
     get,
-    post
+    post,
+    delete: deleteRequest
   };
 };
 

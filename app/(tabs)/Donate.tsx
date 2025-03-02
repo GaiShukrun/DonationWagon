@@ -9,18 +9,26 @@ import {
   ScrollView 
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { BabyIcon, ShirtIcon } from 'lucide-react-native';
 
 export default function Donate() {
   const { isUserLoggedIn, requireAuth } = useAuth();
+  const params = useLocalSearchParams();
+  const fromNav = params.fromNav === 'true';
 
   useEffect(() => {
     // Check authentication when component mounts
     if (!isUserLoggedIn) {
       router.push('/(auth)/Sign-In');
+      return;
     }
-  }, [isUserLoggedIn]);
+
+    // If coming from navbar click, redirect directly to donation-details
+    if (fromNav) {
+      router.replace('/(tabs)/donation-details');
+    }
+  }, [isUserLoggedIn, fromNav]);
 
   const handleCategoryPress = (category: string) => {
     if (!isUserLoggedIn) {

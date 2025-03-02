@@ -35,6 +35,7 @@ export default function TabLayout() {
         <Tabs.Screen name="donate" />
         <Tabs.Screen name="schedule" />
         <Tabs.Screen name="profile" />
+        <Tabs.Screen name="donation-details" options={{ href: null }} />
       </Tabs>
 
       {/* Bottom Navigation Bar - Exactly as it was in DonationScreen */}
@@ -49,7 +50,12 @@ export default function TabLayout() {
 
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => handleNavigation('/donate', 'Please sign in to access donation features')}
+          onPress={() => requireAuth(
+            () => router.push({
+              pathname: '/(tabs)/donation-details'
+            }),
+            'Please sign in to access donation features'
+          )}
         >
           <HeartHandshake color="#2D5A27" size={24} />
           <Text style={styles.navText}>Donate</Text>

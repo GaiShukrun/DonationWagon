@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { LogOutIcon, User, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DonationCart from '@/components/DonationCart';
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -233,6 +234,16 @@ export default function ProfileScreen() {
             </View>
           </View>
           
+          {/* Donation Cart Section */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>Your Donation Cart</Text>
+            {user && user.id ? (
+              <DonationCart userId={user.id} />
+            ) : (
+              <Text style={styles.errorText}>Unable to load user information</Text>
+            )}
+          </View>
+          
           {/* Debug/Testing Section */}
           <View style={styles.actionSection}>
             <TouchableOpacity 
@@ -429,5 +440,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });
