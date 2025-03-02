@@ -5,7 +5,7 @@ import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 import { useApi } from '@/hooks/useApi';
 
 // API base URL
-const API_URL = 'http://10.0.0.7:3000'; // Your computer's actual IP address
+const API_URL = 'http://10.0.0.20:3000'; // Updated to actual local IP address
 
 // Create the Auth Context
 const AuthContext = createContext({
