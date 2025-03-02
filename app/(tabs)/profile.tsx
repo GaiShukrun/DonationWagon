@@ -214,6 +214,25 @@ export default function ProfileScreen() {
             {/* Removed username display for security */}
           </View>
           
+          {/* User Stats Section */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>Your Donation Stats</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{user.itemsDonated || '0'}</Text>
+                <Text style={styles.statLabel}>Items Donated</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{user.points || '0'}</Text>
+                <Text style={styles.statLabel}>Points Earned</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{user.pickups || '0'}</Text>
+                <Text style={styles.statLabel}>Pickups</Text>
+              </View>
+            </View>
+          </View>
+          
           {/* Debug/Testing Section */}
           <View style={styles.actionSection}>
             <TouchableOpacity 
@@ -379,5 +398,36 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  statCard: {
+    backgroundColor: '#FCF2E9',
+    padding: 16,
+    borderRadius: 12,
+    width: '30%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D5A27',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

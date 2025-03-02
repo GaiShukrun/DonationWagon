@@ -25,7 +25,17 @@ const DonationScreen = () => {
       () => {
         // Navigate to the donation flow with the selected category
         console.log(`Selected category: ${category}`);
-        // Implement navigation to the specific donation flow
+        if (category === 'Infant Toys') {
+          router.push({
+            pathname: '/(tabs)/donation-details',
+            params: { type: 'toys' }
+          });
+        } else if (category === 'Clothing') {
+          router.push({
+            pathname: '/(tabs)/donation-details',
+            params: { type: 'clothes' }
+          });
+        }
       },
       `Please sign in to donate ${category.toLowerCase()}`
     );
@@ -189,6 +199,15 @@ const DonationScreen = () => {
               <Text style={styles.statLabel}>Pickups</Text>
             </View>
           </View>
+
+          {/* Mission Statement Section - Added as requested */}
+          <View style={styles.missionContainer}>
+            <Text style={styles.missionTitle}>Donate Your Used Clothes Today</Text>
+            <Text style={styles.missionText}>
+              Welcome to Donation Wagon, where you can donate your used clothes and receive points and prizes in return. 
+              Our mission is to create a sustainable future by giving your pre-loved items a new life.
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -297,8 +316,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
+    textAlign: 'center',
   },
 
   leaderboardContainer: {
@@ -406,7 +426,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  
+  missionContainer: {
+    backgroundColor: '#FCF2E9',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E8D0B3',
+  },
+  missionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D5A27',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  missionText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
 });
 
 export default DonationScreen;
