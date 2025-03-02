@@ -14,6 +14,7 @@ import { router, useNavigation } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 import { Eye, EyeOff } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -25,6 +26,7 @@ export default function SignIn() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [redirectText, setRedirectText] = useState('Redirecting to home page...');
   const { login } = useAuth();
   const navigation = useNavigation();
 
@@ -56,6 +58,15 @@ export default function SignIn() {
         username,
         password
       });
+      
+      // Check if there's a pending action
+      const pendingAction = await AsyncStorage.getItem('pendingAuthAction');
+      if (pendingAction) {
+        const action = JSON.parse(pendingAction);
+        if (action.pathname) {
+          setRedirectText(`Redirecting to ${action.pathname.includes('donation') ? 'donation page' : 'requested page'}...`);
+        }
+      }
       
       setShowSuccessMessage(true);
     } catch (error) {
@@ -150,7 +161,7 @@ export default function SignIn() {
         visible={showSuccessMessage}
         message="Sign in successful!"
         redirectPath="/"
-        redirectText="Redirecting to home page..."
+        redirectText={redirectText}
         onClose={() => setShowSuccessMessage(false)}
       />
 

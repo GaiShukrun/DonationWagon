@@ -15,13 +15,13 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import { ArrowLeft, Camera, X, Plus, Minus } from 'phosphor-react-native';
+import { ArrowLeft, Camera, X, Plus, Minus } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { AuthContext } from '../../context/AuthContext';
-import useApi from '../../hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
+import { useApi } from '@/hooks/useApi';
 
 export default function DonationDetails() {
-  const { isUserLoggedIn, requireAuth, user } = useContext(AuthContext);
+  const { isUserLoggedIn, requireAuth, user } = useAuth();
   const params = useLocalSearchParams();
   const router = useRouter();
   const api = useApi();
@@ -38,6 +38,7 @@ export default function DonationDetails() {
       color: '',
       gender: '',
       quantity: 1,
+      images: [] as string[],
     },
   ]);
 
@@ -55,7 +56,7 @@ export default function DonationDetails() {
     }
   }, [isUserLoggedIn]);
 
-  const pickImage = async () => {
+  const pickImage = async (itemId?: number) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
@@ -71,11 +72,21 @@ export default function DonationDetails() {
     });
 
     if (!result.canceled) {
-      setImages([...images, result.assets[0].uri]);
+      if (itemId) {
+        // Add image to specific clothing item
+        setClothingItems(clothingItems.map(item => 
+          item.id === itemId 
+            ? { ...item, images: [...item.images, result.assets[0].uri] } 
+            : item
+        ));
+      } else {
+        // For toys, add to general images
+        setImages([...images, result.assets[0].uri]);
+      }
     }
   };
 
-  const takePhoto = async () => {
+  const takePhoto = async (itemId?: number) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
     if (status !== 'granted') {
@@ -90,7 +101,17 @@ export default function DonationDetails() {
     });
 
     if (!result.canceled) {
-      setImages([...images, result.assets[0].uri]);
+      if (itemId) {
+        // Add image to specific clothing item
+        setClothingItems(clothingItems.map(item => 
+          item.id === itemId 
+            ? { ...item, images: [...item.images, result.assets[0].uri] } 
+            : item
+        ));
+      } else {
+        // For toys, add to general images
+        setImages([...images, result.assets[0].uri]);
+      }
     }
   };
 
@@ -98,6 +119,17 @@ export default function DonationDetails() {
     const newImages = [...images];
     newImages.splice(index, 1);
     setImages(newImages);
+  };
+
+  const removeItemImage = (itemId: number, imageIndex: number) => {
+    setClothingItems(clothingItems.map(item => {
+      if (item.id === itemId) {
+        const newImages = [...item.images];
+        newImages.splice(imageIndex, 1);
+        return { ...item, images: newImages };
+      }
+      return item;
+    }));
   };
 
   const handleSubmit = async () => {
@@ -111,21 +143,44 @@ export default function DonationDetails() {
       formData.append('donationType', donationType);
 
       if (donationType === 'clothes') {
-        formData.append('clothingItems', JSON.stringify(clothingItems));
+        // Convert clothing items to a format that includes image URIs
+        const itemsWithImagePaths = clothingItems.map(item => ({
+          id: item.id,
+          type: item.type,
+          size: item.size,
+          color: item.color,
+          gender: item.gender,
+          quantity: item.quantity,
+          imagePaths: item.images.map((_, index) => `item_${item.id}_image_${index}.jpg`)
+        }));
+        
+        formData.append('clothingItems', JSON.stringify(itemsWithImagePaths));
+        
+        // Add all clothing item images to formData
+        clothingItems.forEach(item => {
+          item.images.forEach((imageUri, imageIndex) => {
+            formData.append('images', {
+              uri: imageUri,
+              type: 'image/jpeg',
+              name: `item_${item.id}_image_${imageIndex}.jpg`,
+            });
+          });
+        });
       } else {
         formData.append('name', toyName);
         formData.append('description', toyDescription);
         formData.append('ageGroup', toyAgeGroup);
         formData.append('condition', toyCondition);
-      }
-
-      images.forEach((image, index) => {
-        formData.append('images', {
-          uri: image,
-          type: 'image/jpeg',
-          name: `image_${index}.jpg`,
+        
+        // Add toy images to formData
+        images.forEach((image, index) => {
+          formData.append('images', {
+            uri: image,
+            type: 'image/jpeg',
+            name: `image_${index}.jpg`,
+          });
         });
-      });
+      }
 
       const response = await api.post('/donations', formData, {
         headers: {
@@ -156,6 +211,7 @@ export default function DonationDetails() {
         color: '',
         gender: '',
         quantity: 1,
+        images: [],
       },
     ]);
   };
@@ -210,6 +266,52 @@ export default function DonationDetails() {
                 <X size={16} color="white" />
               </TouchableOpacity>
             )}
+          </View>
+
+          {/* Image upload section for each clothing item */}
+          <View style={styles.imageSection}>
+            <Text style={styles.label}>Upload Images 📸</Text>
+            <Text style={styles.imageHelpText}>
+              Please add photos of this item
+            </Text>
+
+            {/* Display images for this item */}
+            {item.images.length > 0 && (
+              <View style={styles.imagePreviewContainer}>
+                {item.images.map((imageUri, imageIndex) => (
+                  <View key={imageIndex} style={styles.imagePreview}>
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.previewImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeItemImage(item.id, imageIndex)}
+                    >
+                      <X size={14} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.imageButtonsContainer}>
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={() => pickImage(item.id)}
+              >
+                <Camera size={18} color="#333" />
+                <Text style={styles.imageButtonText}>Gallery</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={() => takePhoto(item.id)}
+              >
+                <Camera size={18} color="#333" />
+                <Text style={styles.imageButtonText}>Camera</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <Text style={styles.label}>Clothing Type</Text>
@@ -281,27 +383,29 @@ export default function DonationDetails() {
           </View>
 
           <View style={styles.quantityContainer}>
-            <Text style={styles.label}>Quantity</Text>
-            <View style={styles.quantityControls}>
-              <TouchableOpacity
-                onPress={() => decreaseQuantity(item.id)}
-                style={[
-                  styles.quantityButton,
-                  item.quantity <= 1 && styles.quantityButtonDisabled,
-                ]}
-                disabled={item.quantity <= 1}
-              >
-                <Minus size={16} color={item.quantity <= 1 ? "#999" : "#333"} />
-              </TouchableOpacity>
+            <View style={styles.quantityRow}>
+              <Text style={styles.label}>Quantity</Text>
+              <View style={styles.quantityControls}>
+                <TouchableOpacity
+                  onPress={() => decreaseQuantity(item.id)}
+                  style={[
+                    styles.quantityButton,
+                    item.quantity <= 1 && styles.quantityButtonDisabled,
+                  ]}
+                  disabled={item.quantity <= 1}
+                >
+                  <Minus size={16} color={item.quantity <= 1 ? "#999" : "#333"} />
+                </TouchableOpacity>
 
-              <Text style={styles.quantityText}>{item.quantity}</Text>
+                <Text style={styles.quantityText}>{item.quantity}</Text>
 
-              <TouchableOpacity
-                onPress={() => increaseQuantity(item.id)}
-                style={styles.quantityButton}
-              >
-                <Plus size={16} color="#333" />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => increaseQuantity(item.id)}
+                  style={styles.quantityButton}
+                >
+                  <Plus size={16} color="#333" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -370,6 +474,42 @@ export default function DonationDetails() {
           <Picker.Item label="Fair" value="fair" />
         </Picker>
       </View>
+
+      {/* Image upload section for toys */}
+      <View style={styles.imageSection}>
+        <Text style={styles.label}>Upload Images 📸</Text>
+        <Text style={styles.imageHelpText}>
+          Please add photos of the toy
+        </Text>
+
+        {images.length > 0 && (
+          <View style={styles.imagePreviewContainer}>
+            {images.map((imageUri, index) => (
+              <View key={index} style={styles.imagePreview}>
+                <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={() => removeImage(index)}
+                >
+                  <X size={14} color="white" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.imageButtonsContainer}>
+          <TouchableOpacity style={styles.imageButton} onPress={() => pickImage()}>
+            <Camera size={18} color="#333" />
+            <Text style={styles.imageButtonText}>Gallery</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.imageButton} onPress={() => takePhoto()}>
+            <Camera size={18} color="#333" />
+            <Text style={styles.imageButtonText}>Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
@@ -397,54 +537,6 @@ export default function DonationDetails() {
                 ? '👚 Donate Clothing'
                 : '🧸 Donate Toys'}
             </Text>
-          </View>
-
-          <View style={styles.formSection}>
-            <Text style={styles.sectionTitle}>📷 Upload Images</Text>
-            <Text style={styles.helperText}>
-              Add photos of the item you wish to donate
-            </Text>
-
-            <View style={styles.imagePickerButtons}>
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={takePhoto}
-              >
-                <Camera color="#333" size={24} />
-                <Text style={styles.imageButtonText}>Take Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={pickImage}
-              >
-                <Text style={styles.imageButtonText}>
-                  Choose from Gallery
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {images.length > 0 && (
-              <View style={styles.imagePreviewContainer}>
-                <Text style={styles.label}>Selected Images</Text>
-                <ScrollView horizontal style={styles.imagePreviewScroll}>
-                  {images.map((uri, index) => (
-                    <View key={index} style={styles.imagePreview}>
-                      <Image
-                        source={{ uri }}
-                        style={styles.previewImage}
-                      />
-                      <TouchableOpacity
-                        style={styles.removeImageButton}
-                        onPress={() => removeImage(index)}
-                      >
-                        <X color="white" size={16} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
           </View>
 
           {donationType === 'clothes' ? renderClothesForm() : renderToysForm()}
@@ -520,9 +612,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 8,
-    color: '#555',
-    fontWeight: '500',
+    color: '#333',
   },
   input: {
     backgroundColor: '#F5F5F5',
@@ -656,6 +748,12 @@ const styles = StyleSheet.create({
   },
   quantityContainer: {
     marginBottom: 16,
+    marginTop: 8,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   quantityControls: {
     flexDirection: 'row',
@@ -663,6 +761,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderRadius: 8,
     padding: 8,
+    marginLeft: 16,
+    flex: 0.6,
   },
   quantityButton: {
     backgroundColor: '#E0E0E0',
@@ -679,5 +779,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginHorizontal: 16,
+  },
+  imageSection: {
+    marginBottom: 16,
+  },
+  imageHelpText: {
+    fontSize: 14,
+    color: '#777',
+    marginBottom: 8,
+  },
+  imageButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
 });

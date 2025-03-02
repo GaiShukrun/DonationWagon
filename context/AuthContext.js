@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
   const [authMessage, setAuthMessage] = useState('');
   const [token, setToken] = useState(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [pendingAuthAction, setPendingAuthAction] = useState(null);
   
   // Use our custom API hook
   const api = useApi();
@@ -49,6 +50,22 @@ export const AuthProvider = ({ children }) => {
           setUser(JSON.parse(userData));
           setToken(storedToken);
           setIsUserLoggedIn(true);
+          
+          // Check if there's a pending action after login
+          const pendingAction = await AsyncStorage.getItem('pendingAuthAction');
+          if (pendingAction) {
+            const action = JSON.parse(pendingAction);
+            if (action.pathname && action.params) {
+              // Execute the pending action
+              setTimeout(() => {
+                router.push({
+                  pathname: action.pathname,
+                  params: action.params
+                });
+                AsyncStorage.removeItem('pendingAuthAction');
+              }, 500);
+            }
+          }
         }
       } catch (error) {
         console.error('Error checking user:', error);
@@ -124,6 +141,22 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(user);
       setIsUserLoggedIn(true);
+      
+      // Check if there's a pending action after login
+      const pendingAction = await AsyncStorage.getItem('pendingAuthAction');
+      if (pendingAction) {
+        const action = JSON.parse(pendingAction);
+        if (action.pathname && action.params) {
+          // Execute the pending action after a short delay
+          setTimeout(() => {
+            router.push({
+              pathname: action.pathname,
+              params: action.params
+            });
+            AsyncStorage.removeItem('pendingAuthAction');
+          }, 500);
+        }
+      }
       
       return true;
     } catch (error) {
@@ -258,7 +291,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Function to check if user is authenticated and redirect if not
-  const requireAuth = (callback, message = 'You need to sign in to access this feature') => {
+  const requireAuth = (callback, message = 'You need to sign in to access this feature', destination = null, params = null) => {
     if (!isUserLoggedIn) {
       // Prevent multiple redirects
       if (isRedirecting) {
@@ -270,6 +303,15 @@ export const AuthProvider = ({ children }) => {
       // Show auth message
       setAuthMessage(message);
       setShowAuthMessage(true);
+      
+      // Store the callback information if provided
+      if (destination) {
+        const pendingAction = {
+          pathname: destination,
+          params: params || {}
+        };
+        AsyncStorage.setItem('pendingAuthAction', JSON.stringify(pendingAction));
+      }
       
       // Use a single timeout for showing the message
       setTimeout(() => {

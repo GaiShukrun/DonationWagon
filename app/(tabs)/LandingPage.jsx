@@ -21,25 +21,35 @@ const DonationScreen = () => {
   const { requireAuth, isUserLoggedIn, logout } = useAuth();
 
   const handleCategoryPress = (category) => {
-    requireAuth(
-      () => {
-        // Navigate to the donation flow with the selected category
-        console.log(`Selected category: ${category}`);
-        
-        if (category === 'Clothing') {
+    if (category === 'Clothing') {
+      requireAuth(
+        () => {
+          // Navigate to the donation flow with the selected category
+          console.log(`Selected category: ${category}`);
           router.push({
             pathname: '/(tabs)/donation-details',
             params: { type: 'clothes' }
           });
-        } else if (category === 'Infant Toys') {
+        },
+        `Please sign in to donate ${category.toLowerCase()}`,
+        '/(tabs)/donation-details',
+        { type: 'clothes' }
+      );
+    } else if (category === 'Infant Toys') {
+      requireAuth(
+        () => {
+          // Navigate to the donation flow with the selected category
+          console.log(`Selected category: ${category}`);
           router.push({
             pathname: '/(tabs)/donation-details',
             params: { type: 'toys' }
           });
-        }
-      },
-      `Please sign in to donate ${category.toLowerCase()}`
-    );
+        },
+        `Please sign in to donate ${category.toLowerCase()}`,
+        '/(tabs)/donation-details',
+        { type: 'toys' }
+      );
+    }
   };
 
   const handleRewardsPress = () => {
