@@ -25,15 +25,16 @@ const DonationScreen = () => {
       () => {
         // Navigate to the donation flow with the selected category
         console.log(`Selected category: ${category}`);
-        if (category === 'Infant Toys') {
-          router.push({
-            pathname: '/(tabs)/donation-details',
-            params: { type: 'toys' }
-          });
-        } else if (category === 'Clothing') {
+        
+        if (category === 'Clothing') {
           router.push({
             pathname: '/(tabs)/donation-details',
             params: { type: 'clothes' }
+          });
+        } else if (category === 'Infant Toys') {
+          router.push({
+            pathname: '/(tabs)/donation-details',
+            params: { type: 'toys' }
           });
         }
       },
