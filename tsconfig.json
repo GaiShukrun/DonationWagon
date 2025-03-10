@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/(auth)/Sign-In.tsx"  ]
+, "app/(auth)/Sign-In.tsx", "app/(tabs)/profile.jsx", "components/DonationCart.jsx", "app/(tabs)/donation-details.jsx"  ]
 }

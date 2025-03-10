@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { LogOutIcon, User, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +24,22 @@ export default function ProfileScreen() {
   const { user, logout, isUserLoggedIn, updateProfileImage } = useAuth();
   const [profileImage, setProfileImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Trigger refresh of donation cart when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const refreshDonationCart = async () => {
+        if (isUserLoggedIn && user && user.id) {
+          console.log('Profile screen focused, refreshing donation cart...');
+          await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
+        }
+      };
+      
+      refreshDonationCart();
+      
+      return () => {}; // Cleanup function
+    }, [isUserLoggedIn, user])
+  );
 
   // Load profile image when user changes
   useEffect(() => {

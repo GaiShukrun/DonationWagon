@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { CustomAlertMessage } from '@/components/CustomAlertMessage';
 import DonationCart from '@/components/DonationCart';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DonationDetails() {
   const { isUserLoggedIn, requireAuth, user } = useAuth();
@@ -269,6 +270,9 @@ export default function DonationDetails() {
       // Save donation to backend
       const response = await api.post('/donations', donationData);
       console.log('Donation submission response:', response);
+
+      // Set a flag in AsyncStorage to indicate that the donation cart needs refreshing
+      await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
 
       setAlertTitle('Success!');
       setAlertMessage(`Your ${donationType} donation has been saved to your donation cart! You can schedule a pickup later.`);

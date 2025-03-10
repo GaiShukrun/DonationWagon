@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 
 // Base URL for API requests
-const API_URL = 'http://10.0.0.20:3000'; // Updated to correct IP address
+const API_URL = 'http://10.0.0.45:3000'; // Updated to correct IP address
 // For physical devices, use your computer's actual local network IP address
 // Example: const API_URL = 'http://192.168.1.100:3000';
 
