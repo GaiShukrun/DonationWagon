@@ -13,6 +13,7 @@ import { Trash2, Calendar, Package, Clock, Check, AlertTriangle, ShoppingBag } f
 import { useRouter } from 'expo-router';
 import useApi from '@/hooks/useApi';
 import CustomAlertMessage from './CustomAlertMessage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type DonationItem = {
   _id: string;
@@ -50,8 +51,28 @@ const DonationCart = ({ userId }: { userId: string }) => {
   useEffect(() => {
     if (userId) {
       fetchDonations();
+      
+      // Set up a refresh check interval
+      const checkRefreshInterval = setInterval(checkForRefresh, 500);
+      
+      // Clean up interval on unmount
+      return () => clearInterval(checkRefreshInterval);
     }
   }, [userId]);
+  
+  // Check if the cart needs to be refreshed
+  const checkForRefresh = async () => {
+    try {
+      const needsRefresh = await AsyncStorage.getItem('donationCartNeedsRefresh');
+      if (needsRefresh === 'true') {
+        console.log('Refreshing donation cart...');
+        fetchDonations();
+        await AsyncStorage.setItem('donationCartNeedsRefresh', 'false');
+      }
+    } catch (error) {
+      console.error('Error checking refresh status:', error);
+    }
+  };
 
   // Fetch donations from API
   const fetchDonations = async () => {
