@@ -1,4 +1,3 @@
-// DonationScreen.js
 import React, { useState } from 'react';
 import { router } from 'expo-router';  
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +11,8 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { GiftIcon, BabyIcon, ShirtIcon, LogOutIcon, CalendarIcon } from 'lucide-react-native';
 
@@ -19,6 +20,7 @@ const windowWidth = Dimensions.get('window').width;
 
 const DonationScreen = () => {
   const { requireAuth, isUserLoggedIn, logout } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = (category) => {
     if (category === 'Clothing') {
@@ -76,189 +78,214 @@ const DonationScreen = () => {
     );
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Add any data refresh logic here
+    // For example, if you need to refresh user data or donation categories
+    
+    // Simulate a delay for demonstration purposes
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Main Content */}
-      <ScrollView style={styles.content}>
-        {/* Header - removed */}
-        <View style={styles.header}>
-        </View>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={['#3498db', '#9b59b6']} // Android: Spinning colors
+            tintColor="#e74c3c" // iOS: Spinner color
+            title="Refreshing..." // iOS: Text under spinner
+            titleColor="#e74c3c"
+        />
+        }
+      >
+        {/* Main Content */}
+        <View style={styles.content}>
+          {/* Header - removed */}
+          <View style={styles.header}>
+          </View>
 
-        {/* Quick Donation Section */}
-        <View style={styles.donationSection}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Ready to Donate?</Text>
-            {isUserLoggedIn && (
+          {/* Quick Donation Section */}
+          <View style={styles.donationSection}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Ready to Donate?</Text>
+              {isUserLoggedIn && (
+                <TouchableOpacity 
+                  style={styles.signOutButton}
+                  onPress={handleSignOut}
+                >
+                  <LogOutIcon color="white" size={16} style={styles.signOutIcon} />
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.subtitle}>Choose a donation category</Text>
+
+            {/* Donation Categories */}
+            <View style={styles.categories}>
               <TouchableOpacity 
-                style={styles.signOutButton}
-                onPress={handleSignOut}
+                style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
+                onPress={() => handleCategoryPress('Infant Toys')}
               >
-                <LogOutIcon color="white" size={16} style={styles.signOutIcon} />
-                <Text style={styles.signOutText}>Sign Out</Text>
+                <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                  <BabyIcon color="white" size={32} />
+                </View>
+                <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
+                <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
               </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.subtitle}>Choose a donation category</Text>
 
-          {/* Donation Categories */}
-          <View style={styles.categories}>
-            <TouchableOpacity 
-              style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
-              onPress={() => handleCategoryPress('Infant Toys')}
-            >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <BabyIcon color="white" size={32} />
-              </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
-              onPress={() => handleCategoryPress('Clothing')}
-            >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <ShirtIcon color="white" size={32} />
-              </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Schedule Pickup Button - now as a category card */}
-          <TouchableOpacity 
-            style={[styles.categoryCard, { backgroundColor: '#F5A623', width: '100%', marginBottom: 24 }]}
-            onPress={handleSchedulePickup}
-          >
-            <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <CalendarIcon color="white" size={32} />
-            </View>
-            <Text style={[styles.categoryTitle, { color: 'white' }]}>Schedule a Pickup</Text>
-            <Text style={[styles.categoryDescription, { color: 'white' }]}>Request a convenient pickup time</Text>
-          </TouchableOpacity>
-
-          {/* Leaderboard Section */}
-          <View style={styles.leaderboardContainer}>
-            <View style={styles.leaderboardHeader}>
-              <Text style={styles.leaderboardTitle}>Leaderboard</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>View All</Text>
+              <TouchableOpacity 
+                style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
+                onPress={() => handleCategoryPress('Clothing')}
+              >
+                <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                  <ShirtIcon color="white" size={32} />
+                </View>
+                <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
+                <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Leaderboard Rankings */}
-            <View style={styles.leaderboardList}>
-              {/* First Place */}
-              <View style={[styles.leaderboardItem, styles.firstPlace]}>
-                <Text style={styles.rankNumber}>1</Text>
-                <View style={[styles.userAvatar, styles.firstPlaceAvatar]}>
-                  <Text style={styles.avatarText}>👑</Text>
+            {/* Schedule Pickup Button - now as a category card */}
+            <TouchableOpacity 
+              style={[styles.categoryCard, { backgroundColor: '#F5A623', width: '100%', marginBottom: 24 }]}
+              onPress={handleSchedulePickup}
+            >
+              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                <CalendarIcon color="white" size={32} />
+              </View>
+              <Text style={[styles.categoryTitle, { color: 'white' }]}>Schedule a Pickup</Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Request a convenient pickup time</Text>
+            </TouchableOpacity>
+
+            {/* Leaderboard Section */}
+            <View style={styles.leaderboardContainer}>
+              <View style={styles.leaderboardHeader}>
+                <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+                <TouchableOpacity style={styles.viewAllButton}>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Leaderboard Rankings */}
+              <View style={styles.leaderboardList}>
+                {/* First Place */}
+                <View style={[styles.leaderboardItem, styles.firstPlace]}>
+                  <Text style={styles.rankNumber}>1</Text>
+                  <View style={[styles.userAvatar, styles.firstPlaceAvatar]}>
+                    <Text style={styles.avatarText}>👑</Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>John Smith</Text>
+                    <View style={styles.pointsContainer}>
+                      <GiftIcon color="#BE3E28" size={14} />
+                      <Text style={styles.points}>2,540 points</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>John Smith</Text>
-                  <View style={styles.pointsContainer}>
-                    <GiftIcon color="#BE3E28" size={14} />
-                    <Text style={styles.points}>2,540 points</Text>
+
+                {/* Second Place */}
+                <View style={[styles.leaderboardItem, styles.secondPlace]}>
+                  <Text style={styles.rankNumber}>2</Text>
+                  <View style={[styles.userAvatar, styles.secondPlaceAvatar]}>
+                    <Text style={styles.avatarText}>🥈</Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>Sarah Jones</Text>
+                    <View style={styles.pointsContainer}>
+                      <GiftIcon color="#BE3E28" size={14} />
+                      <Text style={styles.points}>1,820 points</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Third Place */}
+                <View style={[styles.leaderboardItem, styles.thirdPlace]}>
+                  <Text style={styles.rankNumber}>3</Text>
+                  <View style={[styles.userAvatar, styles.thirdPlaceAvatar]}>
+                    <Text style={styles.avatarText}>🥉</Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>Mike Brown</Text>
+                    <View style={styles.pointsContainer}>
+                      <GiftIcon color="#BE3E28" size={14} />
+                      <Text style={styles.points}>1,245 points</Text>
+                    </View>
                   </View>
                 </View>
               </View>
+            </View>
 
-              {/* Second Place */}
-              <View style={[styles.leaderboardItem, styles.secondPlace]}>
-                <Text style={styles.rankNumber}>2</Text>
-                <View style={[styles.userAvatar, styles.secondPlaceAvatar]}>
-                  <Text style={styles.avatarText}>🥈</Text>
+            {/* Quick Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>50+</Text>
+                <Text style={styles.statLabel}>Items Donated</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>300</Text>
+                <Text style={styles.statLabel}>Points Earned</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>5</Text>
+                <Text style={styles.statLabel}>Pickups</Text>
+              </View>
+            </View>
+
+            {/* How Donation Works Section */}
+            <View style={styles.howItWorksContainer}>
+              <Text style={styles.howItWorksTitle}>How Donation Works</Text>
+              
+              <View style={styles.stepContainer}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>1</Text>
                 </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>Sarah Jones</Text>
-                  <View style={styles.pointsContainer}>
-                    <GiftIcon color="#BE3E28" size={14} />
-                    <Text style={styles.points}>1,820 points</Text>
-                  </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>Take Photos & Provide Details</Text>
+                  <Text style={styles.stepDescription}>
+                    Take clear photos of your item and fill in details so we know what you're donating.
+                  </Text>
                 </View>
               </View>
-
-              {/* Third Place */}
-              <View style={[styles.leaderboardItem, styles.thirdPlace]}>
-                <Text style={styles.rankNumber}>3</Text>
-                <View style={[styles.userAvatar, styles.thirdPlaceAvatar]}>
-                  <Text style={styles.avatarText}>🥉</Text>
+              
+              <View style={styles.stepContainer}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>2</Text>
                 </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>Mike Brown</Text>
-                  <View style={styles.pointsContainer}>
-                    <GiftIcon color="#BE3E28" size={14} />
-                    <Text style={styles.points}>1,245 points</Text>
-                  </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>Submit Your Donation</Text>
+                  <Text style={styles.stepDescription}>
+                    Submit your donation information and our team will review it.
+                  </Text>
                 </View>
               </View>
+              
+              <View style={styles.stepContainer}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>3</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>Earn Points & Schedule Pickup</Text>
+                  <Text style={styles.stepDescription}>
+                    Once approved, you'll earn points and can schedule a convenient pickup time.
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
 
-          {/* Quick Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>50+</Text>
-              <Text style={styles.statLabel}>Items Donated</Text>
+            {/* Mission Statement Section - Added as requested */}
+            <View style={styles.missionContainer}>
+              <Text style={styles.missionTitle}>Donate Your Used Clothes Today</Text>
+              <Text style={styles.missionText}>
+                Welcome to Donation Wagon, where you can donate your used clothes and receive points and prizes in return. 
+                Our mission is to create a sustainable future by giving your pre-loved items a new life.
+              </Text>
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>300</Text>
-              <Text style={styles.statLabel}>Points Earned</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>5</Text>
-              <Text style={styles.statLabel}>Pickups</Text>
-            </View>
-          </View>
-
-          {/* How Donation Works Section */}
-          <View style={styles.howItWorksContainer}>
-            <Text style={styles.howItWorksTitle}>How Donation Works</Text>
-            
-            <View style={styles.stepContainer}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Take Photos & Provide Details</Text>
-                <Text style={styles.stepDescription}>
-                  Take clear photos of your item and fill in details so we know what you're donating.
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.stepContainer}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Submit Your Donation</Text>
-                <Text style={styles.stepDescription}>
-                  Submit your donation information and our team will review it.
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.stepContainer}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Earn Points & Schedule Pickup</Text>
-                <Text style={styles.stepDescription}>
-                  Once approved, you'll earn points and can schedule a convenient pickup time.
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Mission Statement Section - Added as requested */}
-          <View style={styles.missionContainer}>
-            <Text style={styles.missionTitle}>Donate Your Used Clothes Today</Text>
-            <Text style={styles.missionText}>
-              Welcome to Donation Wagon, where you can donate your used clothes and receive points and prizes in return. 
-              Our mission is to create a sustainable future by giving your pre-loved items a new life.
-            </Text>
           </View>
         </View>
       </ScrollView>
@@ -552,6 +579,9 @@ const styles = StyleSheet.create({
   stepDescription: {
     fontSize: 14,
     color: '#666',
+  },
+  scrollView: {
+    flex: 1,
   },
 });
 

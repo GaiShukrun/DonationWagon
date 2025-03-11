@@ -10,6 +10,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
@@ -24,6 +26,8 @@ export default function ProfileScreen() {
   const { user, logout, isUserLoggedIn, updateProfileImage } = useAuth();
   const [profileImage, setProfileImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
 
   // Trigger refresh of donation cart when screen is focused
   useFocusEffect(
@@ -156,6 +160,17 @@ export default function ProfileScreen() {
     logout();
   };
 
+  // Handle refresh action
+  const onRefresh = async () => {
+    setRefreshing(true);
+    
+    AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 300);
+  };
+
   // If not logged in, show a simple message
   if (!isUserLoggedIn || !user) {
     return (
@@ -169,7 +184,19 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={['#3498db', '#9b59b6']} // Android: Spinning colors
+            tintColor="#e74c3c" // iOS: Spinner color
+            title="Refreshing..." // iOS: Text under spinner
+            titleColor="#e74c3c"
+        />
+        }
+      >
         <View style={styles.content}>
           {/* Profile Header */}
           <View style={styles.header}>
@@ -279,6 +306,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCF2E9',
+
   },
   scrollView: {
     flex: 1,

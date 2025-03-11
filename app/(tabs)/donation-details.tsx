@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -33,6 +34,7 @@ export default function DonationDetails() {
   const [showDonationCart, setShowDonationCart] = useState(!donationType);
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [clothingItems, setClothingItems] = useState([
     {
@@ -786,7 +788,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCF2E9',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0,
+    // paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: {
     flex: 1,
