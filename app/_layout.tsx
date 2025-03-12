@@ -62,7 +62,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, backgroundColor: 'black' }}>
+          <View style={{ flex: 1, backgroundColor: 'black'}}>
             <StatusBar backgroundColor="black" style="light" />
             <Stack 
               screenOptions={{
