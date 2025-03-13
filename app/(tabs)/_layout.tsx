@@ -33,6 +33,7 @@ export default function TabLayout() {
         }}>
         <Tabs.Screen name="index" />
         <Tabs.Screen name="donate" />
+        <Tabs.Screen name="donate-tab" />
         <Tabs.Screen name="schedule" />
         <Tabs.Screen name="profile" />
         <Tabs.Screen name="donation-details" options={{ href: null }} />
@@ -50,12 +51,7 @@ export default function TabLayout() {
 
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => requireAuth(
-            () => router.push({
-              pathname: '/(tabs)/donation-details'
-            }),
-            'Please sign in to access donation features'
-          )}
+          onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
         >
           <HeartHandshake color="#2D5A27" size={24} />
           <Text style={styles.navText}>Donate</Text>
@@ -63,10 +59,7 @@ export default function TabLayout() {
         
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => requireAuth(
-            () => router.push('schedule'), 
-            'Please sign in to access your donation schedule'
-          )}
+          onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
         >
           <Calendar color="#2D5A27" size={24} />
           <Text style={styles.navText}>Schedule</Text>
@@ -74,10 +67,7 @@ export default function TabLayout() {
         
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => requireAuth(
-            () => router.push('profile'),
-            'Please sign in to view your profile'
-          )}
+          onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
         >
           <User color="#2D5A27" size={24} />
           <Text style={styles.navText}>Profile</Text>
@@ -88,6 +78,7 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+
   bottomNav: {
     position: 'absolute',
     bottom: 0,

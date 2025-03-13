@@ -9,6 +9,8 @@ import {
   Dimensions,
   ActivityIndicator,
   BackHandler,
+  StatusBar,
+
 } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -186,6 +188,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCF2E9',
+    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0,
   },
   content: {
     flex: 1,
