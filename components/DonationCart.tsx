@@ -366,7 +366,7 @@ const DonationCart = ({ userId }: { userId: string }) => {
           <Text style={styles.emptyText}>No donations yet</Text>
           <TouchableOpacity 
             style={styles.donateButton}
-            onPress={() => router.push('/(tabs)/donate')}
+            onPress={() => router.push({ pathname: '/(tabs)/donate-tab' })}
           >
             <Text style={styles.donateButtonText}>Make a Donation</Text>
           </TouchableOpacity>

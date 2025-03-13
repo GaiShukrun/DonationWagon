@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -325,6 +326,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCF2E9',
+    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0,
+
   },
   content: {
     flex: 1,

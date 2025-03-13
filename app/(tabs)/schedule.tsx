@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Calendar, Clock, ChevronLeft, MapPin, Truck } from 'lucide-react-native';
@@ -29,6 +30,7 @@ const ScheduleScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
@@ -146,107 +148,130 @@ const ScheduleScreen = () => {
     });
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Refresh donation data
+    if (donationIds.length > 0) {
+      await fetchDonations(donationIds);
+    }
+    setRefreshing(false);
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={24} color="#2D5A27" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Schedule Pickup</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2D5A27" />
-          <Text style={styles.loadingText}>Loading donation details...</Text>
-        </View>
-      ) : (
-        <>
-          {/* Donation Summary */}
-          <View style={styles.summaryContainer}>
-            <Text style={styles.sectionTitle}>Donation Summary</Text>
-            <Text style={styles.summaryText}>
-              You are scheduling pickup for {donationIds.length} donation{donationIds.length !== 1 ? 's' : ''}.
-            </Text>
-          </View>
-
-          {/* Date Selection */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Select Pickup Date</Text>
-            <TouchableOpacity 
-              style={styles.dateSelector}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Calendar size={20} color="#2D5A27" />
-              <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-            </TouchableOpacity>
-            
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-                minimumDate={new Date()}
-              />
-            )}
-          </View>
-
-          {/* Pickup Instructions */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Pickup Instructions</Text>
-            <View style={styles.instructionItem}>
-              <Clock size={20} color="#2D5A27" />
-              <Text style={styles.instructionText}>
-                Our pickup team will arrive between 9:00 AM and 5:00 PM on the scheduled date.
-              </Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <MapPin size={20} color="#2D5A27" />
-              <Text style={styles.instructionText}>
-                Please ensure someone is available to hand over the donations at your registered address.
-              </Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <Truck size={20} color="#2D5A27" />
-              <Text style={styles.instructionText}>
-                Have your donations packed and ready for pickup.
-              </Text>
-            </View>
-          </View>
-
-          {/* Schedule Button */}
-          <TouchableOpacity 
-            style={[
-              styles.scheduleButton,
-              isSubmitting && styles.disabledButton
-            ]}
-            onPress={handleSchedulePickup}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={styles.scheduleButtonText}>Confirm Pickup Schedule</Text>
-            )}
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={['#3498db', '#9b59b6']} // Android: Spinning colors
+            tintColor="#e74c3c" // iOS: Spinner color
+            title="Refreshing..." // iOS: Text under spinner
+            titleColor="#e74c3c"
+        />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color="#2D5A27" />
           </TouchableOpacity>
-        </>
-      )}
+          <Text style={styles.headerTitle}>Schedule Pickup</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      {/* Custom Alert Message */}
-      <CustomAlertMessage
-        visible={alertVisible}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-        onConfirm={() => {
-          setAlertVisible(false);
-          if (alertCallback) alertCallback();
-        }}
-      />
-    </ScrollView>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2D5A27" />
+            <Text style={styles.loadingText}>Loading donation details...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Donation Summary */}
+            <View style={styles.summaryContainer}>
+              <Text style={styles.sectionTitle}>Donation Summary</Text>
+              <Text style={styles.summaryText}>
+                You are scheduling pickup for {donationIds.length} donation{donationIds.length !== 1 ? 's' : ''}.
+              </Text>
+            </View>
+
+            {/* Date Selection */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Select Pickup Date</Text>
+              <TouchableOpacity 
+                style={styles.dateSelector}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Calendar size={20} color="#2D5A27" />
+                <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+              </TouchableOpacity>
+              
+              {showDatePicker && (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
+            </View>
+
+            {/* Pickup Instructions */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Pickup Instructions</Text>
+              <View style={styles.instructionItem}>
+                <Clock size={20} color="#2D5A27" />
+                <Text style={styles.instructionText}>
+                  Our pickup team will arrive between 9:00 AM and 5:00 PM on the scheduled date.
+                </Text>
+              </View>
+              <View style={styles.instructionItem}>
+                <MapPin size={20} color="#2D5A27" />
+                <Text style={styles.instructionText}>
+                  Please ensure someone is available to hand over the donations at your registered address.
+                </Text>
+              </View>
+              <View style={styles.instructionItem}>
+                <Truck size={20} color="#2D5A27" />
+                <Text style={styles.instructionText}>
+                  Have your donations packed and ready for pickup.
+                </Text>
+              </View>
+            </View>
+
+            {/* Schedule Button */}
+            <TouchableOpacity 
+              style={[
+                styles.scheduleButton,
+                isSubmitting && styles.disabledButton
+              ]}
+              onPress={handleSchedulePickup}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.scheduleButtonText}>Confirm Pickup Schedule</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* Custom Alert Message */}
+        <CustomAlertMessage
+          visible={alertVisible}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+          onConfirm={() => {
+            setAlertVisible(false);
+            if (alertCallback) alertCallback();
+          }}
+        />
+      </ScrollView>
+    </View>
   );
 };
 
@@ -254,6 +279,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
