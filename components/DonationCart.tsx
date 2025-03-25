@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  ScrollView,
+  FlatList,
   Alert,
 } from 'react-native';
 import { Trash2, Calendar, Package, Clock, Check, AlertTriangle, ShoppingBag } from 'lucide-react-native';
@@ -193,26 +193,6 @@ const DonationCart = ({ userId }: { userId: string }) => {
     });
   };
 
-  const handleSchedulePickupForAll = () => {
-    // Check if there are any pending donations
-    const pendingDonations = donations.filter(donation => donation.status === 'pending');
-    
-    if (pendingDonations.length === 0) {
-      setAlertTitle('No Pending Donations');
-      setAlertMessage('You don\'t have any pending donations to schedule for pickup.');
-      setAlertVisible(true);
-      return;
-    }
-    
-    // Navigate to schedule pickup screen with all pending donation IDs
-    const donationIds = pendingDonations.map(donation => donation._id).join(',');
-    router.push({
-      pathname: '/(tabs)/schedule',
-      params: { donationIds }
-    });
-  };
-
-  // Function to handle donation deletion
   const handleDeleteDonation = (donationId: string) => {
     setAlertTitle('Confirm Deletion');
     setAlertMessage('Are you sure you want to delete this donation?');
@@ -267,85 +247,45 @@ const DonationCart = ({ userId }: { userId: string }) => {
               onPress={() => handleDeleteDonation(item._id)}
               disabled={isLoading}
             >
-              <Trash2 color="#BE3E28" size={18} />
+              <Trash2 color="#BE3E28" size={16} />
             </TouchableOpacity>
           </View>
-          <View style={styles.donationTypeContainer}>
+        </View>
+        
+        {/* Compact Item Info Row */}
+        <View style={styles.compactInfoRow}>
+          {/* Donation Type */}
+          <View style={styles.infoItem}>
             {getDonationTypeIcon(item.donationType)}
-            <Text style={styles.donationType}>
-              {item.donationType === 'clothes' ? 'Clothing' : 'Toys'} Donation
+            <Text style={styles.infoText}>
+              {item.donationType === 'clothes' ? 'Clothes' : 'Toys'}
             </Text>
           </View>
-        </View>
-        
-        <View style={styles.donationContent}>
-          <View style={styles.donationDetails}>
-            <Text style={styles.donationDate}>
-              Created on {formatDate(item.createdAt)}
-            </Text>
-            <Text style={styles.itemCount}>
-              {itemCount} {itemCount === 1 ? 'item' : 'items'}
-            </Text>
-            
-            {item.pickupDate && (
-              <Text style={styles.pickupDate}>
-                Pickup: {formatDate(item.pickupDate)}
-              </Text>
-            )}
-          </View>
-        </View>
-        
-        {/* Content Container - Images and Items Side by Side */}
-        <View style={styles.contentContainer}>
-          {/* Image Gallery */}
-          {allImages.length > 0 && (
-            <View style={styles.imageGalleryContainer}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.imageGallery}
-                contentContainerStyle={styles.imageGalleryContent}
-              >
-                {allImages.map((image, index) => (
-                  <Image 
-                    key={`${item._id}-image-${index}`}
-                    source={{ uri: image }} 
-                    style={styles.galleryImage} 
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
           
-          {/* Item Details */}
-          <View style={styles.itemDetailsContainer}>
-            {item.donationType === 'clothes' && item.clothingItems && (
-              <>
-                <Text style={styles.itemDetailsTitle}>Clothing Items:</Text>
-                {item.clothingItems.map((clothingItem, index) => (
-                  <View key={`clothing-${index}`} style={styles.itemDetail}>
-                    <Text style={styles.itemDetailText}>
-                      • {clothingItem.quantity}x {clothingItem.type}
-                    </Text>
-                  </View>
-                ))}
-              </>
-            )}
-            
-            {item.donationType === 'toys' && item.toyItems && (
-              <>
-                <Text style={styles.itemDetailsTitle}>Toy Items:</Text>
-                {item.toyItems.map((toyItem, index) => (
-                  <View key={`toy-${index}`} style={styles.itemDetail}>
-                    <Text style={styles.itemDetailText}>
-                      • {toyItem.quantity}x {toyItem.name}
-                    </Text>
-                  </View>
-                ))}
-              </>
-            )}
+          {/* Item Count */}
+          <View style={styles.infoItem}>
+            <Package size={16} color="#2D5A27" />
+            <Text style={styles.infoText}>
+              {itemCount}
+            </Text>
+          </View>
+          
+          {/* Status */}
+          <View style={styles.infoItem}>
+            <Clock size={16} color="#2D5A27" />
+            <Text style={styles.infoText}>
+              {getStatusText(item.status)}
+            </Text>
           </View>
         </View>
+        
+        {/* Image Preview - Only if images exist */}
+        {allImages.length > 0 && (
+          <Image 
+            source={{ uri: allImages[0] }} 
+            style={styles.previewImage} 
+          />
+        )}
       </View>
     );
   };
@@ -355,49 +295,36 @@ const DonationCart = ({ userId }: { userId: string }) => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2D5A27" />
+          <Text style={styles.loadingText}>Loading donations...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchDonations}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : donations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <ShoppingBag size={48} color="#CCCCCC" />
-          <Text style={styles.emptyText}>No donations yet</Text>
-          <TouchableOpacity 
-            style={styles.donateButton}
-            onPress={() => router.push({ pathname: '/(tabs)/donate-tab' })}
-          >
-            <Text style={styles.donateButtonText}>Make a Donation</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>You don't have any donations yet.</Text>
         </View>
       ) : (
-        <>
-          {donations.map((donation, index) => (
-            <View key={donation._id} style={index < donations.length - 1 ? { marginBottom: 16 } : null}>
-              {renderDonationItem({ item: donation })}
-            </View>
-          ))}
-          
-          {donations.some(donation => donation.status === 'pending') && (
-            <TouchableOpacity 
-              style={styles.scheduleAllButton}
-              onPress={handleSchedulePickupForAll}
-            >
-              <Calendar size={18} color="white" />
-              <Text style={styles.scheduleAllButtonText}>Schedule Pickup for All Pending Donations</Text>
-            </TouchableOpacity>
-          )}
-        </>
+        <FlatList
+          data={donations}
+          renderItem={renderDonationItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
+          horizontal={true}
+          showsHorizontalScrollIndicator={true}
+          pagingEnabled={true}
+        />
       )}
-      
-      {/* Custom Alert Message */}
+
       <CustomAlertMessage
         visible={alertVisible}
         title={alertTitle}
         message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-        onConfirm={() => {
+        onClose={() => {
           setAlertVisible(false);
           if (alertCallback) alertCallback();
         }}
@@ -413,13 +340,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    padding: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
   },
   errorContainer: {
     flex: 1,
@@ -457,56 +388,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  donateButton: {
-    backgroundColor: '#2D5A27',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  donateButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  scheduleAllButton: {
-    backgroundColor: '#2D5A27',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  scheduleAllButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
-  },
   listContent: {
-    padding: 16,
-    paddingBottom: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   donationItem: {
     backgroundColor: 'white',
     borderRadius: 12,
-    marginBottom: 24,
-    padding: 20,
+    marginRight: 10,
+    padding: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    width: '100%',
+    width: 250,
   },
   donationHeader: {
     flexDirection: 'column',
@@ -519,17 +415,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     width: '100%',
-  },
-  donationTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 4,
-  },
-  donationType: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 8,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -548,94 +433,28 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
   },
-  donationContent: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  donationDetails: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  donationDate: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 6,
-  },
-  itemCount: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  pickupDate: {
-    fontSize: 15,
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
-  contentContainer: {
+  compactInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  imageGalleryContainer: {
-    flex: 1,
-    marginRight: 16,
-    maxWidth: '50%',
-  },
-  imageGallery: {
-    marginBottom: 12,
-  },
-  imageGalleryContent: {
-    paddingRight: 8,
-  },
-  galleryImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  itemDetailsContainer: {
-    flex: 1,
-    marginBottom: 12,
-    paddingTop: 0,
-    borderTopWidth: 0,
-    borderTopColor: '#F0F0F0',
-  },
-  itemDetailsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#2D5A27',
-  },
-  itemDetail: {
-    marginBottom: 4,
-  },
-  itemDetailText: {
-    fontSize: 15,
-    color: '#666',
-  },
-  scheduleButton: {
-    backgroundColor: '#2D5A27',
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
   },
-  scheduleButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    marginHorizontal: 8,
-  },
-  emptyCartContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCartText: {
+  infoText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: '#333',
+    marginLeft: 6,
+  },
+  previewImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginTop: 12,
   },
 });
 
