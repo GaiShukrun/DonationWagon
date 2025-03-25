@@ -73,8 +73,10 @@ const DonationScreen = () => {
       () => {
         // Navigate to schedule pickup page
         console.log('Navigate to schedule pickup page');
+        router.push('/(tabs)/schedule');
       },
-      'Please sign in to schedule a pickup'
+      'Please sign in to schedule a pickup',
+      '/(tabs)/schedule'
     );
   };
 
