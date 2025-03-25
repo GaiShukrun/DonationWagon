@@ -9,21 +9,28 @@ import {
   Image,
   Platform,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Calendar, Clock, ChevronLeft, MapPin, Truck } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useApi } from '@/hooks/useApi';
 import { CustomAlertMessage } from '@/components/CustomAlertMessage';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
+import DonationCart from '@/components/DonationCart';
+import * as Location from 'expo-location';
+
+interface User {
+  id: string;
+}
 
 const ScheduleScreen = () => {
   const router = useRouter();
   const api = useApi();
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: User | null };
+  console.log('User object:', user);
   const params = useLocalSearchParams();
 
-  // State
   const [donationIds, setDonationIds] = useState<string[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -32,11 +39,24 @@ const ScheduleScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Enhanced location state
+  const [location, setLocation] = useState<{city?: string, street?: string, apartment?: string, coordinates?: {latitude: number, longitude: number}, gpsAddress?: string}>({});
+  const [useGPS, setUseGPS] = useState(false);
+  const [deliveryMessage, setDeliveryMessage] = useState('');
+
   // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user) {
+      console.warn('User is not logged in or user object is null');
+    } else {
+      console.log('User is logged in:', user);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Get donationIds from URL params
@@ -81,9 +101,53 @@ const ScheduleScreen = () => {
     }
   };
 
+  const handleGPSLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setAlertTitle('Permission Required');
+        setAlertMessage('Please enable location services to use GPS.');
+        setAlertVisible(true);
+        return;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      setUseGPS(true);
+      setLocation(prev => ({...prev, coordinates: currentLocation.coords}));
+
+      // Use expo-location's reverseGeocodeAsync to get address
+      const geocode = await Location.reverseGeocodeAsync(currentLocation.coords);
+      if (geocode.length > 0) {
+        const { city, street, name } = geocode[0];
+        const address = `${name}, ${street}, ${city}`;
+        // Display address instead of filling input fields
+        setLocation(prev => ({...prev, gpsAddress: address}));
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setAlertTitle('Location Error');
+      setAlertMessage('Failed to get current location. Please try again or enter manually.');
+      setAlertVisible(true);
+    }
+  };
+
+  const validateManualLocation = () => {
+    if (!location.city || !location.street || !location.apartment) {
+      setAlertTitle('Missing Information');
+      setAlertMessage('Please fill in all required fields (city, street, apartment number) when entering location manually.');
+      setAlertVisible(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleSchedulePickup = async () => {
     if (isSubmitting) return;
-    
+
+    if (!useGPS && !validateManualLocation()) {
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -104,7 +168,9 @@ const ScheduleScreen = () => {
         const response = await api.post('/schedule-pickup', {
           donationId,
           pickupDate: selectedDate.toISOString(),
-          userId: user?.id
+          userId: user?.id,
+          location: useGPS ? 'GPS Location' : `${location.city}, ${location.street}, ${location.apartment}`,
+          deliveryMessage,
         });
         
         results.push({
@@ -162,21 +228,12 @@ const ScheduleScreen = () => {
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-            colors={['#3498db', '#9b59b6']} // Android: Spinning colors
-            tintColor="#e74c3c" // iOS: Spinner color
-            title="Refreshing..." // iOS: Text under spinner
-            titleColor="#e74c3c"
-        />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#2D5A27" />
-          </TouchableOpacity>
+          <View style={{ width: 24 }} />
           <Text style={styles.headerTitle}>Schedule Pickup</Text>
           <View style={{ width: 24 }} />
         </View>
@@ -191,9 +248,13 @@ const ScheduleScreen = () => {
             {/* Donation Summary */}
             <View style={styles.summaryContainer}>
               <Text style={styles.sectionTitle}>Donation Summary</Text>
-              <Text style={styles.summaryText}>
-                You are scheduling pickup for {donationIds.length} donation{donationIds.length !== 1 ? 's' : ''}.
-              </Text>
+              {user && user.id ? (
+                <View style={styles.donationCartContainer}>
+                  <DonationCart userId={user.id} />
+                </View>
+              ) : (
+                <Text style={styles.errorText}>Unable to load user information</Text>
+              )}
             </View>
 
             {/* Date Selection */}
@@ -216,6 +277,78 @@ const ScheduleScreen = () => {
                   minimumDate={new Date()}
                 />
               )}
+            </View>
+
+            {/* Location Selection */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Pickup Location</Text>
+              <View style={styles.locationButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.locationButton, useGPS && styles.activeButton]}
+                  onPress={handleGPSLocation}
+                >
+                  <MapPin size={20} color={useGPS ? '#fff' : '#2D5A27'} />
+                  <Text style={[styles.buttonText, useGPS && styles.activeButtonText]}>Use GPS Location</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.locationButton, !useGPS && styles.activeButton]}
+                  onPress={() => setUseGPS(false)}
+                >
+                  <Text style={[styles.buttonText, !useGPS && styles.activeButtonText]}>Enter Manually</Text>
+                </TouchableOpacity>
+              </View>
+
+              {!useGPS && (
+                <View style={styles.manualInputContainer}>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>City <Text style={styles.required}>*</Text></Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter city"
+                      value={location.city}
+                      onChangeText={(text: string) => setLocation(prev => ({...prev, city: text}))}
+                    />
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Street <Text style={styles.required}>*</Text></Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter street"
+                      value={location.street}
+                      onChangeText={(text: string) => setLocation(prev => ({...prev, street: text}))}
+                    />
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Apartment Number <Text style={styles.required}>*</Text></Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter apartment number"
+                      value={location.apartment}
+                      onChangeText={(text: string) => setLocation(prev => ({...prev, apartment: text}))}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              )}
+
+              {useGPS && location.gpsAddress && (
+                <View style={styles.addressDisplay}>
+                  <Text style={styles.addressText}>Address: {location.gpsAddress}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Delivery Message */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Delivery Instructions</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Enter special instructions for the delivery person"
+                value={deliveryMessage}
+                onChangeText={setDeliveryMessage}
+                multiline
+                numberOfLines={4}
+              />
             </View>
 
             {/* Pickup Instructions */}
@@ -278,10 +411,13 @@ const ScheduleScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FCF2E9',
   },
   scrollView: {
     flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
@@ -290,15 +426,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: 'white',
-  },
-  backButton: {
-    padding: 8,
+    backgroundColor: '#FCF2E9',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#2D5A27',
+  },
+  backButton: {
+    padding: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -328,10 +464,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2D5A27',
     marginBottom: 12,
-  },
-  summaryText: {
-    fontSize: 16,
-    color: '#333',
   },
   sectionContainer: {
     backgroundColor: 'white',
@@ -385,6 +517,77 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  locationButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  locationButton: {
+    flex: 1,
+    padding: 15,
+    marginHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: '#e8f5e9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  activeButton: {
+    backgroundColor: '#2D5A27',
+  },
+  activeButtonText: {
+    color: '#fff',
+  },
+  buttonText: {
+    marginLeft: 10,
+    color: '#2D5A27',
+    fontWeight: '500',
+  },
+  manualInputContainer: {
+    marginTop: 10,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    marginBottom: 5,
+    color: '#2D5A27',
+    fontWeight: '500',
+  },
+  required: {
+    color: '#e74c3c',
+  },
+  input: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  addressDisplay: {
+    marginTop: 10,
+    padding: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+  },
+  addressText: {
+    color: '#2D5A27',
+    fontWeight: '500',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    marginTop: 10,
+  },
+  donationCartContainer: {
+    height: 300,
+    overflow: 'hidden',
   },
 });
 
