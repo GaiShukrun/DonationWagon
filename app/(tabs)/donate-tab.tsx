@@ -68,12 +68,10 @@ export default function DonateTab() {
               onPress={() => handleCategoryPress('infant toys')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <BabyIcon color="white" size={48} />
+                <BabyIcon color="white" size={24} />
               </View>
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>
-                Educational toys, stuffed animals
-              </Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -81,12 +79,10 @@ export default function DonateTab() {
               onPress={() => handleCategoryPress('infant clothes')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <ShirtIcon color="white" size={48} />
+                <ShirtIcon color="white" size={24} />
               </View>
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Clothes</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>
-                Shirts, pants, dresses
-              </Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
             </TouchableOpacity>
           </View>
           
@@ -160,7 +156,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   categories: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 30,
   },
@@ -177,17 +173,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     alignItems: 'center',
+    flex: 1,
+    margin: 10,
   },
   categoryIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   categoryTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
   },
