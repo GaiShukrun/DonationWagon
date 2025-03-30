@@ -18,18 +18,33 @@ export default function DonateTab() {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = (category: string) => {
-    if (!isUserLoggedIn) {
+    if (category === 'Clothes') {
+      if (!isUserLoggedIn) {
+        router.push({
+          pathname: '/(auth)/Sign-In',
+          params: { message: `Please sign in to donate ${category.toLowerCase()}` }
+        });
+        return;
+      }
+      
       router.push({
-        pathname: '/(auth)/Sign-In',
-        params: { message: `Please sign in to donate ${category}` }
+        pathname: '/(tabs)/donation-details',
+        params: { type: 'clothes' }
       });
-      return;
+    } else if (category === 'Infant Toys') {
+      if (!isUserLoggedIn) {
+        router.push({
+          pathname: '/(auth)/Sign-In',
+          params: { message: `Please sign in to donate ${category.toLowerCase()}` }
+        });
+        return;
+      }
+      
+      router.push({
+        pathname: '/(tabs)/donation-details',
+        params: { type: 'toys' }
+      });
     }
-    
-    router.push({
-      pathname: '/(tabs)/donation-details',
-      params: { type: category }
-    });
   };
 
   const onRefresh = async () => {
@@ -63,9 +78,9 @@ export default function DonateTab() {
           <Text style={styles.subtitle}>Choose a donation category to begin</Text>
           
           <View style={styles.categories}>
-            <TouchableOpacity 
+          <TouchableOpacity 
               style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
-              onPress={() => handleCategoryPress('infant toys')}
+              onPress={() => handleCategoryPress('Infant Toys')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                 <BabyIcon color="white" size={24} />
@@ -73,17 +88,18 @@ export default function DonateTab() {
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
             </TouchableOpacity>
-
             <TouchableOpacity 
               style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
-              onPress={() => handleCategoryPress('infant clothes')}
+              onPress={() => handleCategoryPress('Clothes')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                 <ShirtIcon color="white" size={24} />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Clothes</Text>
+              <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
             </TouchableOpacity>
+
+       
           </View>
           
           <View style={styles.infoContainer}>

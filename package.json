@@ -38,6 +38,7 @@
     "expo-symbols": "~0.2.0",
     "expo-system-ui": "~4.0.4",
     "expo-web-browser": "~14.0.1",
+    "ldrs": "^1.1.6",
     "lucide-react": "^0.461.0",
     "lucide-react-native": "^0.462.0",
     "react": "18.3.1",

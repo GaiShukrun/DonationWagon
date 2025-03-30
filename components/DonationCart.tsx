@@ -238,8 +238,7 @@ const DonationCart = ({ userId }: { userId: string }) => {
       <View style={styles.donationItem}>
         <View style={styles.donationHeader}>
           <View style={styles.headerTopRow}>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-              {getStatusIcon(item.status)}
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>            {getStatusIcon(item.status)}
               <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
             </View>
             <TouchableOpacity 
@@ -286,6 +285,19 @@ const DonationCart = ({ userId }: { userId: string }) => {
             style={styles.previewImage} 
           />
         )}
+
+        {/* Render each item in separate boxes */}
+        {item.donationType === 'clothes' && item.clothingItems && item.clothingItems.map((clothingItem, index) => (
+          <View key={index} style={styles.itemBox}>
+            {/* Additional fields can be added here */}
+          </View>
+        ))}
+
+        {item.donationType === 'toys' && item.toyItems && item.toyItems.map((toyItem, index) => (
+          <View key={index} style={styles.itemBox}>
+            {/* Additional fields can be added here */}
+          </View>
+        ))}
       </View>
     );
   };
@@ -455,6 +467,12 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 8,
     marginTop: 12,
+  },
+  itemBox: {
+    backgroundColor: '#F7F7F7',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
   },
 });
 
