@@ -41,12 +41,12 @@ export default function TabLayout() {
 
       {/* Bottom Navigation Bar - Exactly as it was in DonationScreen */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity 
+      <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => handleNavigation('/')}
+          onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
         >
-          <Home color="#2D5A27" size={24} />
-          <Text style={styles.navText}>Home</Text>
+          <User color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -65,12 +65,13 @@ export default function TabLayout() {
           <Text style={styles.navText}>Schedule</Text>
         </TouchableOpacity>
         
+   
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
+          onPress={() => handleNavigation('/')}
         >
-          <User color="#2D5A27" size={24} />
-          <Text style={styles.navText}>Profile</Text>
+          <Home color="#2D5A27" size={24} />
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
       </View>
     </>

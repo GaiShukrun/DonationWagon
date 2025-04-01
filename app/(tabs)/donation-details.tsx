@@ -211,30 +211,16 @@ export default function DonationDetails() {
 
     try {
       // Validate required fields based on donation type
-      if (donationType === 'clothes') {
-        const invalidItems = clothingItems.filter(item => 
-          !item.type || !item.size || !item.gender || item.images.length === 0
-        );
-        
-        if (invalidItems.length > 0) {
-          setAlertTitle('Missing Information');
-          setAlertMessage('Please complete all required fields and add at least one image for each clothing item.');
-          setAlertVisible(true);
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        const invalidItems = toyItems.filter(item => 
-          !item.name || !item.description || !item.ageGroup || !item.condition || item.images.length === 0
-        );
-        
-        if (invalidItems.length > 0) {
-          setAlertTitle('Missing Information');
-          setAlertMessage('Please complete all required fields and add at least one image for each toy item.');
-          setAlertVisible(true);
-          setIsLoading(false);
-          return;
-        }
+      const invalidItems = donationType === 'clothes' 
+        ? clothingItems.filter(item => !item.type || !item.size || !item.gender || item.images.length === 0)
+        : toyItems.filter(item => !item.name || !item.description || !item.ageGroup || !item.condition || item.images.length === 0);
+      
+      if (invalidItems.length > 0) {
+        setAlertTitle('Missing Information');
+        setAlertMessage(`Please complete all required fields and add at least one image for each ${donationType} item.`);
+        setAlertVisible(true);
+        setIsLoading(false);
+        return;
       }
 
       // Make sure we have a valid user ID
@@ -276,6 +262,13 @@ export default function DonationDetails() {
 
       // Set a flag in AsyncStorage to indicate that the donation cart needs refreshing
       await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
+
+      // Clear donation items after saving
+      if (donationType === 'clothes') {
+        setClothingItems([]);
+      } else {
+        setToyItems([]);
+      }
 
       setAlertTitle('Success!');
       setAlertMessage(`Your ${donationType} donation has been saved to your donation cart! You can schedule a pickup later.`);

@@ -73,8 +73,10 @@ const DonationScreen = () => {
       () => {
         // Navigate to schedule pickup page
         console.log('Navigate to schedule pickup page');
+        router.push('/(tabs)/schedule');
       },
-      'Please sign in to schedule a pickup'
+      'Please sign in to schedule a pickup',
+      '/(tabs)/schedule'
     );
   };
 
@@ -114,7 +116,7 @@ const DonationScreen = () => {
           <View style={styles.donationSection}>
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Ready to Donate?</Text>
-              {isUserLoggedIn && (
+              {/* {isUserLoggedIn && (
                 <TouchableOpacity 
                   style={styles.signOutButton}
                   onPress={handleSignOut}
@@ -122,7 +124,7 @@ const DonationScreen = () => {
                   <LogOutIcon color="white" size={16} style={styles.signOutIcon} />
                   <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
-              )}
+              )} */}
             </View>
             <Text style={styles.subtitle}>Choose a donation category</Text>
 

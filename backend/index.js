@@ -351,26 +351,30 @@ app.post('/donations', async (req, res) => {
       return res.status(400).json({ message: 'Toy items are required for toys donation' });
     }
     
-    // Create new donation
-    const newDonation = new Donation({
-      userId,
-      donationType,
-      status: 'pending',
-      clothingItems: donationType === 'clothes' ? clothingItems : [],
-      toyItems: donationType === 'toys' ? toyItems : []
-    });
-    
-    // Save donation
-    await newDonation.save();
+    // Handle multiple donations
+    const donationsToSave = donationType === 'clothes' ? clothingItems : toyItems;
+    const savedDonations = [];
+
+    for (const item of donationsToSave) {
+      const newDonation = new Donation({
+        userId,
+        donationType,
+        status: 'pending',
+        clothingItems: donationType === 'clothes' ? [item] : [],
+        toyItems: donationType === 'toys' ? [item] : []
+      });
+      await newDonation.save();
+      savedDonations.push(newDonation);
+    }
     
     // Return success response
     return res.status(201).json({ 
-      message: 'Donation saved successfully',
-      donation: newDonation
+      message: 'Donations saved successfully',
+      donations: savedDonations
     });
     
   } catch (error) {
-    console.error('Error saving donation:', error);
+    console.error('Error saving donations:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

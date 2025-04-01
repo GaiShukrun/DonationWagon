@@ -62,12 +62,10 @@ export default function Donate() {
               onPress={() => handleCategoryPress('toys')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <BabyIcon color="white" size={48} />
+                <BabyIcon color="white" size={24} />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Toys</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>
-                Donate toys for infants, children, and teenagers
-              </Text>
+              <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -75,12 +73,10 @@ export default function Donate() {
               onPress={() => handleCategoryPress('clothes')}
             >
               <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <ShirtIcon color="white" size={48} />
+                <ShirtIcon color="white" size={24} />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>
-                Donate clothing items of all sizes and types
-              </Text>
+              <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Clothes</Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
             </TouchableOpacity>
           </View>
           
@@ -137,29 +133,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 20,
-    paddingTop: 40,
+    padding: 16,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2D5A27',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   categories: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 24,
+    width: '100%',
   },
   categoryCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    width: '48%',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -168,20 +165,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    alignItems: 'center',
   },
   categoryIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   categoryTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   categoryDescription: {
     fontSize: 14,
@@ -189,40 +182,36 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   infoTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#2D5A27',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   infoStep: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   stepNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#2D5A27',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   stepNumberText: {
     color: 'white',
-    fontSize: 18,
     fontWeight: 'bold',
   },
   stepContent: {
@@ -231,7 +220,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#2D5A27',
     marginBottom: 4,
   },
   stepDescription: {
