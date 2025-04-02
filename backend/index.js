@@ -6,6 +6,7 @@ const Donation = require('./models/Donation');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const sharp = require('sharp');
 
 // Connect to MongoDB
 connectDB();
@@ -21,8 +22,9 @@ app.use(cors({
     optionsSuccessStatus: 204
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase JSON payload size limit for image processing
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Add a simple test endpoint
 app.get('/test', (req, res) => {
@@ -626,23 +628,132 @@ app.post('/schedule-pickup', async (req, res) => {
   }
 });
 
+// Google Cloud Vision API for color analysis
+const axios = require('axios');
 
+// Helper function to convert base64 to buffer
+const base64ToBuffer = (base64String) => {
+  // Remove data URL prefix if present
+  if (base64String.includes('data:image')) {
+    base64String = base64String.split(',')[1];
+  }
+  return Buffer.from(base64String, 'base64');
+};
 
+// Endpoint to analyze image color
+app.post('/api/analyze-color', async (req, res) => {
+  try {
+    const { image } = req.body;
+    const API_KEY = process.env.GOOGLE_CLOUD_VISION_API_KEY;
+    
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+    
+    console.log('Received image data, length:', image.length);
+    
+    try {
+      // Convert base64 to buffer
+      const imageBuffer = base64ToBuffer(image);
+      
+      // Process the image with sharp
+      // Resize to a smaller size to reduce data sent to Vision API
+      // Format as JPEG with 80% quality
+      const processedImageBuffer = await sharp(imageBuffer)
+        .resize(300, 300, { fit: 'inside' })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      
+      // Convert processed image back to base64 for Vision API
+      const processedBase64 = processedImageBuffer.toString('base64');
+      console.log('Processed image size:', processedBase64.length);
+      
+      // Use the Vision API with your API key directly
+      console.log('Sending request to Vision API...');
+      const response = await axios.post(
+        `https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`,
+        {
+          requests: [
+            {
+              image: {
+                content: processedBase64
+              },
+              features: [
+                {
+                  type: 'IMAGE_PROPERTIES',
+                  maxResults: 5
+                }
+              ]
+            }
+          ]
+        }
+      );
+      
+      console.log('Vision API response status:', response.status);
+      
+      // Check if we have valid results
+      if (
+        response.data.responses &&
+        response.data.responses[0] &&
+        response.data.responses[0].imagePropertiesAnnotation &&
+        response.data.responses[0].imagePropertiesAnnotation.dominantColors &&
+        response.data.responses[0].imagePropertiesAnnotation.dominantColors.colors &&
+        response.data.responses[0].imagePropertiesAnnotation.dominantColors.colors.length > 0
+      ) {
+        // Sort colors by score (pixel fraction)
+        const colors = response.data.responses[0].imagePropertiesAnnotation.dominantColors.colors;
+        colors.sort((a, b) => b.pixelFraction - a.pixelFraction);
+        
+        // Get the most dominant color
+        const dominantColor = colors[0];
+        
+        // Convert RGB to hex
+        const hexColor = rgbToHex(
+          dominantColor.color.red,
+          dominantColor.color.green,
+          dominantColor.color.blue
+        );
+        
+        console.log('Dominant color extracted:', hexColor);
+        res.json({ dominantColor: hexColor });
+      } else {
+        console.error('Invalid response format from Vision API:', JSON.stringify(response.data));
+        if (response.data.responses && response.data.responses[0] && response.data.responses[0].error) {
+          console.error('Vision API error details:', JSON.stringify(response.data.responses[0].error));
+        }
+        // Return a default color instead of an error
+        res.json({ dominantColor: '#4287f5' });
+      }
+    } catch (apiError) {
+      console.error('Error calling Vision API:', apiError.message);
+      if (apiError.response) {
+        console.error('API response:', apiError.response.data);
+      }
+      // Return a default color instead of an error
+      res.json({ dominantColor: '#4287f5' });
+    }
+  } catch (error) {
+    console.error('Error analyzing color:', error.message);
+    // Return a default color instead of an error
+    res.json({ dominantColor: '#4287f5' });
+  }
+});
 
+// Helper function to convert RGB to hex
+function rgbToHex(r, g, b) {
+  return '#' + [
+    Math.round(r).toString(16).padStart(2, '0'),
+    Math.round(g).toString(16).padStart(2, '0'),
+    Math.round(b).toString(16).padStart(2, '0')
+  ].join('');
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Endpoint to get API keys for frontend
+app.get('/api/config', (req, res) => {
+  res.json({
+    huggingFaceApiKey: process.env.HUGGING_FACE_API_KEY
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
