@@ -14,7 +14,7 @@ import {
   StatusBar,
   RefreshControl,
 } from 'react-native';
-import { GiftIcon, BabyIcon, ShirtIcon, LogOutIcon, CalendarIcon } from 'lucide-react-native';
+import { GiftIcon, BabyIcon, ShirtIcon, LogOutIcon, CalendarIcon, CameraIcon } from 'lucide-react-native';
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -78,6 +78,12 @@ const DonationScreen = () => {
       'Please sign in to schedule a pickup',
       '/(tabs)/schedule'
     );
+  };
+
+  const handleClothingAnalyzer = () => {
+    // Navigate to the clothing analyzer screen
+    console.log('Navigate to clothing analyzer');
+    router.push('/(tabs)/image-classifier');
   };
 
   const onRefresh = async () => {
@@ -152,6 +158,18 @@ const DonationScreen = () => {
                 <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Clothing Analyzer Button */}
+            <TouchableOpacity 
+              style={[styles.categoryCard, { backgroundColor: '#4A6FA5', width: '100%', marginBottom: 16 }]}
+              onPress={handleClothingAnalyzer}
+            >
+              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                <CameraIcon color="white" size={32} />
+              </View>
+              <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothing Analyzer</Text>
+              <Text style={[styles.categoryDescription, { color: 'white' }]}>Identify clothing items with AI</Text>
+            </TouchableOpacity>
 
             {/* Schedule Pickup Button - now as a category card */}
             <TouchableOpacity 
