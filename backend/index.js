@@ -704,38 +704,61 @@ app.post('/api/analyze-color', async (req, res) => {
         const colors = response.data.responses[0].imagePropertiesAnnotation.dominantColors.colors;
         colors.sort((a, b) => b.pixelFraction - a.pixelFraction);
         
-        // Get the most dominant color
-        const dominantColor = colors[0];
+        // Get the top 3 dominant colors (or fewer if less are available)
+        const topColors = colors.slice(0, Math.min(3, colors.length));
         
-        // Convert RGB to hex
-        const hexColor = rgbToHex(
-          dominantColor.color.red,
-          dominantColor.color.green,
-          dominantColor.color.blue
-        );
+        // Convert RGB to hex for each color
+        const dominantColors = topColors.map(color => {
+          return {
+            hex: rgbToHex(
+              color.color.red,
+              color.color.green,
+              color.color.blue
+            ),
+            score: color.pixelFraction
+          };
+        });
         
-        console.log('Dominant color extracted:', hexColor);
-        res.json({ dominantColor: hexColor });
+        console.log('Dominant colors extracted:', dominantColors);
+        res.json({ dominantColors });
       } else {
         console.error('Invalid response format from Vision API:', JSON.stringify(response.data));
         if (response.data.responses && response.data.responses[0] && response.data.responses[0].error) {
           console.error('Vision API error details:', JSON.stringify(response.data.responses[0].error));
         }
-        // Return a default color instead of an error
-        res.json({ dominantColor: '#4287f5' });
+        // Return default colors instead of an error
+        res.json({ 
+          dominantColors: [
+            { hex: '#4287f5', score: 0.5 },
+            { hex: '#42f5a7', score: 0.3 },
+            { hex: '#f54242', score: 0.2 }
+          ] 
+        });
       }
     } catch (apiError) {
       console.error('Error calling Vision API:', apiError.message);
       if (apiError.response) {
         console.error('API response:', apiError.response.data);
       }
-      // Return a default color instead of an error
-      res.json({ dominantColor: '#4287f5' });
+      // Return default colors instead of an error
+      res.json({ 
+        dominantColors: [
+          { hex: '#4287f5', score: 0.5 },
+          { hex: '#42f5a7', score: 0.3 },
+          { hex: '#f54242', score: 0.2 }
+        ] 
+      });
     }
   } catch (error) {
     console.error('Error analyzing color:', error.message);
-    // Return a default color instead of an error
-    res.json({ dominantColor: '#4287f5' });
+    // Return default colors instead of an error
+    res.json({ 
+      dominantColors: [
+        { hex: '#4287f5', score: 0.5 },
+        { hex: '#42f5a7', score: 0.3 },
+        { hex: '#f54242', score: 0.2 }
+      ] 
+    });
   }
 });
 

@@ -61,8 +61,9 @@ export default function Donate() {
               style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
               onPress={() => handleCategoryPress('toys')}
             >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <BabyIcon color="white" size={24} />
+              <View style={[styles.categoryIconContainer, { backgroundColor: '#2D5A27' }]}>
+                <BabyIcon color="white" size={40
+                } />
               </View>
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>

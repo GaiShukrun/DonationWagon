@@ -80,11 +80,11 @@ const DonationScreen = () => {
     );
   };
 
-  const handleClothingAnalyzer = () => {
-    // Navigate to the clothing analyzer screen
-    console.log('Navigate to clothing analyzer');
-    router.push('/(tabs)/image-classifier');
-  };
+  // const handleClothingAnalyzer = () => {
+  //   // Navigate to the clothing analyzer screen
+  //   console.log('Navigate to clothing analyzer');
+  //   router.push('/(tabs)/image-classifier');
+  // };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -121,7 +121,7 @@ const DonationScreen = () => {
           {/* Quick Donation Section */}
           <View style={styles.donationSection}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>Ready to Donate?</Text>
+              {/* <Text style={styles.title}>Ready to Donate?</Text> */}
               {/* {isUserLoggedIn && (
                 <TouchableOpacity 
                   style={styles.signOutButton}
@@ -132,35 +132,41 @@ const DonationScreen = () => {
                 </TouchableOpacity>
               )} */}
             </View>
-            <Text style={styles.subtitle}>Choose a donation category</Text>
+            {/* <Text style={styles.subtitle}>Choose a donation category</Text> */}
 
             {/* Donation Categories */}
             <View style={styles.categories}>
               <TouchableOpacity 
-                style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
+                style={[styles.categoryCard, { backgroundColor: '#2D5A37' }]}
                 onPress={() => handleCategoryPress('Infant Toys')}
               >
-                <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                  <BabyIcon color="white" size={32} />
+                <View style={[styles.categoryIconContainer, { backgroundColor: '#2D5A37' }]}>
+                  <Image 
+                              source={require('../../assets/images/donation.png')} 
+                              style={styles.navIcon} 
+                            />
                 </View>
-                <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
-                <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
+                <Text style={[styles.categoryTitle, { color: '#e8f5e9' }]}>Toys</Text>
+                <Text style={[styles.categoryDescription, { color: '#e8f5e9' }]}>Educational toys, stuffed animals</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
+                style={[styles.categoryCard, { backgroundColor: '#BE3E58' }]}
                 onPress={() => handleCategoryPress('Clothing')}
               >
-                <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                  <ShirtIcon color="white" size={32} />
+                <View style={[styles.categoryIconContainer, { backgroundColor: '#BE3E58' }]}>
+                <Image 
+                              source={require('../../assets/images/clothes1.png')} 
+                              style={styles.navIcon1} 
+                            />
                 </View>
-                <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
-                <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
+                <Text style={[styles.categoryTitle, { color: '#e8f5e9' }]}>Clothes</Text>
+                <Text style={[styles.categoryDescription, { color: '#e8f5e9' }]}>Shirts, pants, dresses</Text>
               </TouchableOpacity>
             </View>
 
             {/* Clothing Analyzer Button */}
-            <TouchableOpacity 
+            {/* <TouchableOpacity 
               style={[styles.categoryCard, { backgroundColor: '#4A6FA5', width: '100%', marginBottom: 16 }]}
               onPress={handleClothingAnalyzer}
             >
@@ -169,18 +175,21 @@ const DonationScreen = () => {
               </View>
               <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothing Analyzer</Text>
               <Text style={[styles.categoryDescription, { color: 'white' }]}>Identify clothing items with AI</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Schedule Pickup Button - now as a category card */}
             <TouchableOpacity 
-              style={[styles.categoryCard, { backgroundColor: '#F5A623', width: '100%', marginBottom: 24 }]}
+              style={[styles.categoryCard, { backgroundColor: '#F5A643', width: '100%', marginBottom: 24 }]}
               onPress={handleSchedulePickup}
             >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <CalendarIcon color="white" size={32} />
+              <View style={[styles.categoryIconContainer, { backgroundColor: '#F5A643' }]}>
+              <Image 
+                              source={require('../../assets/images/calendar.png')} 
+                              style={styles.navIcon} 
+                            />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Schedule a Pickup</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Request a convenient pickup time</Text>
+              <Text style={[styles.categoryTitle, { color: '#e8f5e9' }]}>Schedule a Pickup</Text>
+              <Text style={[styles.categoryDescription, { color: '#e8f5e9' }]}>Request a convenient pickup time</Text>
             </TouchableOpacity>
 
             {/* Leaderboard Section */}
@@ -356,7 +365,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2D5A27',
+    color: '#666',
     marginBottom: 8,
   },
   subtitle: {
@@ -389,9 +398,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   categoryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 6,
   },
   categoryDescription: {
     fontSize: 14,
@@ -602,6 +611,15 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  navIcon: {
+    width: 60,
+    height: 60,
+    
+  },
+  navIcon1: {
+    width: 75,
+    height: 70,
   },
 });
 

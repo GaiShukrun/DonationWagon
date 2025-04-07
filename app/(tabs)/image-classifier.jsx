@@ -28,6 +28,8 @@ const ImageClassifierScreen = () => {
   const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [dominantColor, setDominantColor] = useState(null);
+  const [selectedClassification, setSelectedClassification] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
 
   // Fetch API key from backend on component mount
   useEffect(() => {
@@ -192,8 +194,8 @@ const ImageClassifierScreen = () => {
       setPrediction(filteredResults);
       
       // Detect dominant color
-      const dominantColor = await extractDominantColor(imageAsset);
-      setDominantColor(dominantColor);
+      const dominantColors = await extractDominantColor(imageAsset);
+      setDominantColor(dominantColors);
       
       setLoading(false);
     } catch (err) {
@@ -232,27 +234,31 @@ const ImageClassifierScreen = () => {
       }
       
       const data = await response.json();
-      return data.dominantColor;
+      return data.dominantColors;
     } catch (err) {
       console.error('Error extracting color:', err);
       return null;
     }
   };
 
+  // Function to render prediction results with selectable options
   const renderPredictionResults = () => {
-    if (!prediction || prediction.length === 0) return null;
-    
+    if (!prediction || prediction.length === 0) {
+      return <Text style={styles.noResultsText}>No clothing items detected</Text>;
+    }
+
     return (
       <View style={styles.predictionContainer}>
-        <Text style={styles.predictionTitle}>Classification Results:</Text>
-        
-        {prediction.map((result, index) => (
-          <View key={index} style={styles.predictionItem}>
-            <Text style={styles.predictionLabel}>{result.label}</Text>
-            <Text style={styles.predictionScore}>
-              {(result.score * 100).toFixed(2)}%
-            </Text>
-          </View>
+        <Text style={styles.predictionTitle}>Detected Items:</Text>
+        {prediction.map((item, index) => (
+          <TouchableOpacity 
+            key={index} 
+            style={[styles.predictionItem, selectedClassification === item.label ? styles.selectedItem : null]}
+            onPress={() => setSelectedClassification(item.label)}
+          >
+            <Text style={styles.predictionLabel}>{item.label}</Text>
+            <Text style={styles.predictionScore}>{(item.score * 100).toFixed(1)}%</Text>
+          </TouchableOpacity>
         ))}
       </View>
     );
@@ -341,13 +347,64 @@ const ImageClassifierScreen = () => {
             ) : (
               <View>
                 {renderPredictionResults()}
-                {dominantColor && (
+                {dominantColor && dominantColor.length > 0 && (
                   <View style={styles.dominantColorContainer}>
-                    <Text style={styles.dominantColorText}>Dominant Color:</Text>
+                    <Text style={styles.dominantColorText}>Dominant Colors:</Text>
                     <View style={styles.colorDisplay}>
-                      <View style={[styles.colorSwatch, { backgroundColor: dominantColor }]} />
-                      <Text style={styles.dominantColorValue}>{dominantColor}</Text>
+                      {dominantColor.map((color, index) => (
+                        <TouchableOpacity 
+                          key={index} 
+                          style={[styles.colorSwatchContainer, selectedColor === color.hex ? styles.selectedColorContainer : null]}
+                          onPress={() => setSelectedColor(color.hex)}
+                        >
+                          <View style={[styles.colorSwatch, { backgroundColor: color.hex }]} />
+                          <Text style={styles.dominantColorValue}>
+                            {color.hex} ({Math.round(color.score * 100)}%)
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
+                  </View>
+                )}
+                {(selectedClassification || selectedColor) && (
+                  <View style={styles.selectionSummaryContainer}>
+                    <Text style={styles.selectionSummaryTitle}>Your Selections:</Text>
+                    {selectedClassification && (
+                      <View style={styles.selectionItem}>
+                        <Text style={styles.selectionLabel}>Item Type:</Text>
+                        <Text style={styles.selectionValue}>{selectedClassification}</Text>
+                      </View>
+                    )}
+                    {selectedColor && (
+                      <View style={styles.selectionItem}>
+                        <Text style={styles.selectionLabel}>Color:</Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                          <View style={[styles.miniColorSwatch, { backgroundColor: selectedColor }]} />
+                          <Text style={styles.selectionValue}>{selectedColor}</Text>
+                        </View>
+                      </View>
+                    )}
+                    <TouchableOpacity 
+                      style={styles.confirmButton}
+                      onPress={() => {
+                        Alert.alert(
+                          'Confirm Selection',
+                          `You selected:\n${selectedClassification ? `Item: ${selectedClassification}` : ''}${selectedClassification && selectedColor ? '\n' : ''}${selectedColor ? `Color: ${selectedColor}` : ''}`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                              text: 'Confirm', 
+                              onPress: () => {
+                                Alert.alert('Selection Saved', 'Your selection has been saved successfully!');
+                                // Here you would typically save the selection or use it elsewhere
+                              }
+                            },
+                          ]
+                        );
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirm Selection</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
                 <TouchableOpacity style={styles.newAnalysisButton} onPress={resetAnalysis}>
@@ -477,6 +534,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  selectedItem: {
+    backgroundColor: '#F7F7F7',
+  },
   predictionLabel: {
     fontSize: 16,
     color: '#333',
@@ -574,13 +634,19 @@ const styles = StyleSheet.create({
   },
   colorDisplay: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  colorSwatchContainer: {
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  selectedColorContainer: {
+    backgroundColor: '#F7F7F7',
   },
   colorSwatch: {
     width: 24,
     height: 24,
     borderRadius: 4,
-    marginRight: 10,
     borderWidth: 1,
     borderColor: '#ddd',
   },
@@ -588,6 +654,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#BE3E28',
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  selectionSummaryContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  selectionSummaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D5A27',
+    marginBottom: 12,
+  },
+  selectionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectionLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectionValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#BE3E28',
+  },
+  miniColorSwatch: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
+  },
+  confirmButton: {
+    backgroundColor: '#2D5A27',
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 
