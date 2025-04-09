@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
+    "@google/genai": "^0.7.0",
+    "@google/generative-ai": "^0.24.0",
     "@react-native-async-storage/async-storage": "^2.1.1",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-picker/picker": "^2.11.0",
@@ -41,6 +43,7 @@
     "ldrs": "^1.1.6",
     "lucide-react": "^0.461.0",
     "lucide-react-native": "^0.462.0",
+    "mime": "^4.0.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.3",

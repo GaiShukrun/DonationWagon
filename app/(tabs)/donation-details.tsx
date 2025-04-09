@@ -23,6 +23,9 @@ import { useApi } from '@/hooks/useApi';
 import { CustomAlertMessage } from '@/components/CustomAlertMessage';
 import DonationCart from '@/components/DonationCart';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleGenAI } from "@google/genai";
+import { createUserContent, createPartFromUri } from '@google/genai';
+
 
 export default function DonationDetails() {
   const { isUserLoggedIn, requireAuth, user } = useAuth();
@@ -35,6 +38,7 @@ export default function DonationDetails() {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
 
   const [clothingItems, setClothingItems] = useState([
     {
@@ -101,6 +105,112 @@ export default function DonationDetails() {
     setImages([]);
   };
 
+
+  const ai = new GoogleGenAI({ apiKey: "----"});
+
+  async function detectAICloth(imageUri: string, itemId: number) {
+    // Set loading state
+    
+    try {
+      // For React Native, we need to work with Blob or base64 data directly
+      // instead of file paths since we're in a mobile environment
+      
+      // Create a Blob from your image data
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      
+      // Create a File object from the Blob
+      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
+      
+      // Upload the file
+      const myfile = await ai.files.upload({
+        file: imageFile,
+        config: { mimeType: "image/jpeg" }
+      });
+      
+      console.log("Uploaded file:", myfile);
+      
+      // Then use the file URI in the content generation request
+      const generationResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash-thinking-exp-01-21",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
+              { text: "Name the clothing category (e.g., top, bottom, footwear) and its color? Return only the \"category,color\" no other words." }
+            ]
+          }
+        ]
+      });
+      
+      const aiText = generationResponse.text?.trim().toLowerCase();
+      console.log("AI response:", aiText);
+
+      
+    } catch (error) {
+      console.error("Error detecting AI:", error);
+    } 
+  }
+
+  async function detectAIToy(imageUri: string, itemId: number) {
+    // Set loading state
+    
+    try {
+      // For React Native, we need to work with Blob or base64 data directly
+      // instead of file paths since we're in a mobile environment
+      
+      // Create a Blob from your image data
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      
+      // Create a File object from the Blob
+      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
+      
+      // Upload the file
+      const myfile = await ai.files.upload({
+        file: imageFile,
+        config: { mimeType: "image/jpeg" }
+      });
+      
+      console.log("Uploaded file:", myfile);
+      
+      // Then use the file URI in the content generation request
+      const generationResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash-thinking-exp-01-21",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
+              { text: "Name the toy and description, age group. Return only the \"toy\ndescription\nage group\" no other words." }
+            ]
+          }
+        ]
+      });
+      
+      const aiText = generationResponse.text?.trim().toLowerCase();
+      console.log("AI response:", aiText);
+
+      
+
+      
+    } catch (error) {
+      console.error("Error detecting AI:", error);
+    }
+  }
+
+  
+  // // Helper function to convert image to base64
+  // async function convertImageToBase64(uri) {
+  //   // Implementation depends on your React Native setup
+  //   // Example using react-native-fs:
+  //   const RNFS = require('react-native-fs');
+  //   const base64 = await RNFS.readFile(uri, 'base64');
+  //   return base64;
+  // }
+
+
   const pickImage = async (itemId?: number) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -114,11 +224,11 @@ export default function DonationDetails() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
+      quality: 1,
+      base64: true,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled) {      
       if (itemId) {
         if (donationType === 'clothes') {
           setClothingItems(clothingItems.map(item => 
@@ -126,15 +236,17 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          detectAICloth(result.assets[0].uri,itemId);
         } else {
           setToyItems(toyItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          detectAIToy(result.assets[0].uri,itemId);
         }
       } else {
-        setImages([...images, result.assets[0].uri]);
+        setImages([...images, result.assets[0]]);
       }
     }
   };
@@ -151,8 +263,8 @@ export default function DonationDetails() {
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
+      quality: 1,
+      base64: true,
     });
 
     if (!result.canceled) {
@@ -163,12 +275,14 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          detectAICloth(result.assets[0].uri,itemId);
         } else {
           setToyItems(toyItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          detectAIToy(result.assets[0].uri,itemId);
         }
       } else {
         setImages([...images, result.assets[0].uri]);
@@ -392,6 +506,7 @@ export default function DonationDetails() {
 
       {clothingItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
+          
           <View style={styles.clothingItemHeader}>
             <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
             {clothingItems.length > 1 && (
@@ -471,6 +586,7 @@ export default function DonationDetails() {
               <Picker.Item label="Underwear" value="underwear" />
               <Picker.Item label="Pajamas" value="pajamas" />
               <Picker.Item label="Other" value="other" />
+              
             </Picker>
           </View>
 
@@ -491,6 +607,7 @@ export default function DonationDetails() {
               <Picker.Item label="3XL" value="3XL" />
               <Picker.Item label="4XL" value="4XL" />
               <Picker.Item label="5XL" value="5XL" />
+              
             </Picker>
           </View>
 
@@ -515,6 +632,7 @@ export default function DonationDetails() {
               <Picker.Item label="Boys" value="boys" />
               <Picker.Item label="Girls" value="girls" />
               <Picker.Item label="Unisex" value="unisex" />
+              
             </Picker>
           </View>
 
@@ -557,12 +675,14 @@ export default function DonationDetails() {
     </View>
   );
 
+
   const renderToysForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.sectionTitle}>🧸 Toy Details</Text>
 
       {toyItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
+          
           <View style={styles.clothingItemHeader}>
             <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
             {toyItems.length > 1 && (
@@ -652,7 +772,7 @@ export default function DonationDetails() {
               <Picker.Item label="Preschool (3-5 years)" value="preschool" />
               <Picker.Item label="School Age (5-12 years)" value="school" />
               <Picker.Item label="Teen (12+ years)" value="teen" />
-              <Picker.Item label="All Ages" value="all" />
+              <Picker.Item label="All Ages" value="all" />           
             </Picker>
           </View>
 
@@ -667,7 +787,7 @@ export default function DonationDetails() {
               <Picker.Item label="New (with tags)" value="new" />
               <Picker.Item label="Like New" value="like_new" />
               <Picker.Item label="Good" value="good" />
-              <Picker.Item label="Fair" value="fair" />
+              <Picker.Item label="Fair" value="fair" />              
             </Picker>
           </View>
 
@@ -1008,5 +1128,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 18,
+    color: '#555',
   },
 });
