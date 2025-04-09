@@ -627,10 +627,9 @@ app.post('/schedule-pickup', async (req, res) => {
 });
 
 
-
-
-
-
+app.get("/gemini-api-key", (req, res) => {
+  res.json({apiKey: process.env.GEMINI_API_KEY});
+});
 
 
 

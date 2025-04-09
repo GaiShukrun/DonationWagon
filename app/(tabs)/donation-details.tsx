@@ -70,6 +70,25 @@ export default function DonationDetails() {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
 
+  const [ai, setAI] = useState(null);
+  
+  useEffect(() => {
+    async function loadKey() {
+      try {
+        const response = await api.get("/gemini-api-key"); // Axios-style
+        const apiKey = response.apiKey;
+        const aiInstance = new GoogleGenAI({ apiKey });
+        setAI(aiInstance);
+      } catch (err) {
+        console.error("Error loading API key:", err);
+      }
+    }
+
+    loadKey();
+  }, []);
+
+
+
   useEffect(() => {
     if (!isUserLoggedIn) {
       router.push({
@@ -106,8 +125,6 @@ export default function DonationDetails() {
     setImages([]);
   };
 
-
-  const ai = new GoogleGenAI({ apiKey: "----"});
 
   async function detectAICloth(imageUri: string, itemId: number) {
     // Set loading state

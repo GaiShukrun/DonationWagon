@@ -2,8 +2,10 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 
 // Base URL for API requests
-const API_URL = 'http://3.122.68.211:3000'; // Updated to correct IP address
+// const API_URL = 'http://3.122.68.211:3000'; // Updated to correct IP address
 
+// Vlad
+const API_URL = 'http://10.0.0.41:3000';
 
 /**
  * Custom hook for making API requests with automatic error handling
@@ -24,10 +26,10 @@ export const useApi = () => {
     setError(null);
     
     try {
-      console.log(`Making GET request to: ${API_URL}${endpoint}`);
+      // console.log(`Making GET request to: ${API_URL}${endpoint}`);
       const response = await axios.get(`${API_URL}${endpoint}`, config);
-      console.log('Response status:', response.status);
-      console.log('Response data:', response.data);
+      // console.log('Response status:', response.status);
+      // console.log('Response data:', response.data);
       return response.data;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
