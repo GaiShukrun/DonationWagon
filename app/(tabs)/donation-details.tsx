@@ -148,6 +148,19 @@ export default function DonationDetails() {
       
       const aiText = generationResponse.text?.trim().toLowerCase();
       console.log("AI response:", aiText);
+
+      if (aiText && aiText.includes(',')) {
+        const [type, color] = aiText.split(',').map(part => part.trim());
+        console.log("Detected type:", type, "Detected color:", color);
+        // Update the item with type and color
+        setClothingItems(prevItems =>
+          prevItems.map(item =>
+            item.id === itemId
+              ? { ...item, type: type , color: color}
+              : item
+          )
+        );
+      }
     } catch (error) {
       console.error("Error detecting AI:", error);
     } finally {
@@ -194,9 +207,33 @@ export default function DonationDetails() {
       
       const aiText = generationResponse.text?.trim().toLowerCase();
       console.log("AI response:", aiText);
- 
+
+      if (aiText) {
+        const sections = aiText.split('\n').map(line => line.trim()).filter(Boolean);
+        console.log("Detected sections:", sections);
+        if (sections.length >= 3) {
+          const toy = sections[0]; // $toy
+          const description = sections[1]; // $description
+          const ageGroup = sections[2]; // $age group
+      
+          console.log("Toy:", toy);
+          console.log("Description:", description);
+          console.log("Age Group:", ageGroup);        // Update the item with type and color
+        setToyItems(prevItems =>
+          prevItems.map(item =>
+            item.id === itemId
+              ? { ...item, name: toy , description: description, ageGroup:ageGroup}
+              : item
+          )
+        ); 
+      }
+    }
+
+      
     } catch (error) {
       console.error("Error detecting AI:", error);
+    } finally {
+      setDetectingNow(false);
     }
   }
 
@@ -595,7 +632,12 @@ export default function DonationDetails() {
               <Picker.Item label="Underwear" value="underwear" />
               <Picker.Item label="Pajamas" value="pajamas" />
               <Picker.Item label="Other" value="other" />
-              
+              {item.type.length > 0 && (
+                <Picker.Item
+                  label={`Chosen: ${item.type}`}
+                  value={item.type}
+                />
+              )}
             </Picker>
           </View>
 
@@ -616,7 +658,12 @@ export default function DonationDetails() {
               <Picker.Item label="3XL" value="3XL" />
               <Picker.Item label="4XL" value="4XL" />
               <Picker.Item label="5XL" value="5XL" />
-              
+              {item.size.length > 0 && (
+                <Picker.Item
+                  label={`Chosen: ${item.size}`}
+                  value={item.size}
+                />
+              )}
             </Picker>
           </View>
 
@@ -641,7 +688,12 @@ export default function DonationDetails() {
               <Picker.Item label="Boys" value="boys" />
               <Picker.Item label="Girls" value="girls" />
               <Picker.Item label="Unisex" value="unisex" />
-              
+              {item.gender.length > 0 && (
+                <Picker.Item
+                  label={`Chosen: ${item.gender}`}
+                  value={item.gender}
+                />
+              )}
             </Picker>
           </View>
 
@@ -691,7 +743,12 @@ export default function DonationDetails() {
 
       {toyItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
-         
+          {detectingNow && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007bff" />
+              <Text style={styles.loadingText}>Detecting item details...</Text>
+            </View>
+          )}
           <View style={styles.clothingItemHeader}>
             <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
             {toyItems.length > 1 && (
@@ -783,7 +840,12 @@ export default function DonationDetails() {
               <Picker.Item label="School Age (5-12 years)" value="school" />
               <Picker.Item label="Teen (12+ years)" value="teen" />
               <Picker.Item label="All Ages" value="all" />
-             
+              {item.ageGroup.length > 0 && (
+                <Picker.Item
+                  label={`Chosen: ${item.ageGroup}`}
+                  value={item.ageGroup}
+                />
+              )}
               
             </Picker>
           </View>
@@ -800,7 +862,12 @@ export default function DonationDetails() {
               <Picker.Item label="Like New" value="like_new" />
               <Picker.Item label="Good" value="good" />
               <Picker.Item label="Fair" value="fair" />
-              
+              {item.condition.length > 0 && (
+                <Picker.Item
+                  label={`Chosen: ${item.condition}`}
+                  value={item.condition}
+                />
+              )}
             </Picker>
           </View>
 
