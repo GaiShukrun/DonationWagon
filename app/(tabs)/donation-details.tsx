@@ -39,6 +39,7 @@ export default function DonationDetails() {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [detectingNow, setDetectingNow] = useState(false);
 
   const [clothingItems, setClothingItems] = useState([
     {
@@ -110,6 +111,7 @@ export default function DonationDetails() {
 
   async function detectAICloth(imageUri: string, itemId: number) {
     // Set loading state
+    setDetectingNow(true);
     
     try {
       // For React Native, we need to work with Blob or base64 data directly
@@ -146,15 +148,16 @@ export default function DonationDetails() {
       
       const aiText = generationResponse.text?.trim().toLowerCase();
       console.log("AI response:", aiText);
-
-      
     } catch (error) {
       console.error("Error detecting AI:", error);
-    } 
+    } finally {
+      setDetectingNow(false);
+    }
   }
 
   async function detectAIToy(imageUri: string, itemId: number) {
     // Set loading state
+    setDetectingNow(true);
     
     try {
       // For React Native, we need to work with Blob or base64 data directly
@@ -191,10 +194,7 @@ export default function DonationDetails() {
       
       const aiText = generationResponse.text?.trim().toLowerCase();
       console.log("AI response:", aiText);
-
-      
-
-      
+ 
     } catch (error) {
       console.error("Error detecting AI:", error);
     }
@@ -236,6 +236,7 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          setDetectingNow(true);
           detectAICloth(result.assets[0].uri,itemId);
         } else {
           setToyItems(toyItems.map(item => 
@@ -243,6 +244,7 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          setDetectingNow(true);
           detectAIToy(result.assets[0].uri,itemId);
         }
       } else {
@@ -275,6 +277,7 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          setDetectingNow(true);
           detectAICloth(result.assets[0].uri,itemId);
         } else {
           setToyItems(toyItems.map(item => 
@@ -282,6 +285,7 @@ export default function DonationDetails() {
               ? { ...item, images: [...item.images, result.assets[0].uri] } 
               : item
           ));
+          setDetectingNow(true);
           detectAIToy(result.assets[0].uri,itemId);
         }
       } else {
@@ -506,7 +510,12 @@ export default function DonationDetails() {
 
       {clothingItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
-          
+          {detectingNow && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007bff" />
+              <Text style={styles.loadingText}>Detecting item details...</Text>
+            </View>
+          )}
           <View style={styles.clothingItemHeader}>
             <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
             {clothingItems.length > 1 && (
@@ -682,7 +691,7 @@ export default function DonationDetails() {
 
       {toyItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
-          
+         
           <View style={styles.clothingItemHeader}>
             <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
             {toyItems.length > 1 && (
@@ -766,13 +775,16 @@ export default function DonationDetails() {
               onValueChange={(value) => updateToyItem(item.id, 'ageGroup', value)}
               style={styles.picker}
             >
+              
               <Picker.Item label="Select age group" value="" />
               <Picker.Item label="Infant (0-1 year)" value="infant" />
               <Picker.Item label="Toddler (1-3 years)" value="toddler" />
               <Picker.Item label="Preschool (3-5 years)" value="preschool" />
               <Picker.Item label="School Age (5-12 years)" value="school" />
               <Picker.Item label="Teen (12+ years)" value="teen" />
-              <Picker.Item label="All Ages" value="all" />           
+              <Picker.Item label="All Ages" value="all" />
+             
+              
             </Picker>
           </View>
 
@@ -787,7 +799,8 @@ export default function DonationDetails() {
               <Picker.Item label="New (with tags)" value="new" />
               <Picker.Item label="Like New" value="like_new" />
               <Picker.Item label="Good" value="good" />
-              <Picker.Item label="Fair" value="fair" />              
+              <Picker.Item label="Fair" value="fair" />
+              
             </Picker>
           </View>
 
