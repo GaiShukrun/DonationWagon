@@ -27,14 +27,14 @@ const styles = StyleSheet.create({
     width: windowWidth,
     height: 60 + (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0),
     backgroundColor: '#FCF2E9', // Using the app's background color from memories
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderBottomColor: 'black', // Using the accent color from memories
     overflow: 'hidden', // This ensures the image doesn't overflow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity:52,
+    shadowOpacity:10,
     shadowRadius: 10,
-    elevation: 50,
+    elevation: 10,
     zIndex: 1000,
     borderRadius: 1,
     borderTopLeftRadius: 10,
