@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,10 @@ import ClothingAnalyzer from '@/components/ClothingAnalyzer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { InferenceClient } from '@huggingface/inference';
 import { PanResponder, Animated } from 'react-native';
+
+const SWIPE_THRESHOLD = 70;
+const SWIPE_DISTANCE = 20;
+const ANIMATION_DURATION = 40;
 
 export default function DonationDetails() {
   const { isUserLoggedIn, requireAuth, user } = useAuth();
@@ -86,57 +90,70 @@ export default function DonationDetails() {
   const [selectedToyAiType, setSelectedToyAiType] = useState<string | null>(null);
   const [showToyTypeOptions, setShowToyTypeOptions] = useState(false);
 
-  const [activeForm, setActiveForm] = useState<'clothing' | 'toys'>('clothing');
-  const [pan] = useState(new Animated.ValueXY());
 
-  const panResponder = React.useRef(
+  const [activeForm, setActiveForm] = useState<'clothing' | 'toys'>(() =>
+    donationType === 'toys' ? 'toys' : 'clothing'
+  );
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: (evt, gestureState) => {
+        // Only allow swipe if gesture starts at leftmost or rightmost 5% of the screen
+        const { locationX } = evt.nativeEvent;
+        const { width: screenWidth } = require('react-native').Dimensions.get('window');
+        if (screenWidth) {
+          const edgeThreshold = screenWidth * 0.1;
+          if (locationX <= edgeThreshold || locationX >= screenWidth - edgeThreshold) {
+            return true;
+          }
+          return false;
+        }
+        return true;
+      },
       onPanResponderMove: (_, gestureState) => {
         pan.setValue({ x: gestureState.dx, y: 0 });
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > 50) { 
-          // Swipe right - faster animation
-          Animated.timing(pan, {
-            toValue: { x: 300, y: 0 },
-            duration: 100, 
-            useNativeDriver: true,
-          }).start(() => {
-            setActiveForm('toys');
-            pan.setValue({ x: -300, y: 0 });
-            Animated.timing(pan, {
-              toValue: { x: 0, y: 0 },
-              duration: 100,
-              useNativeDriver: true,
-            }).start();
+        console.log('SWIPE DEBUG:', {
+          dx: gestureState.dx,
+          dy: gestureState.dy,
+          activeForm,
+        });
+        let switched = false;
+        if (
+          Math.abs(gestureState.dx) > SWIPE_THRESHOLD &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2
+        ) {
+          setActiveForm((prevForm) => {
+            if (gestureState.dx > 0 && prevForm === 'clothing') {
+              console.log('Switching to toys');
+              switched = true;
+              return 'toys';
+            } else if (gestureState.dx < 0 && prevForm === 'toys') {
+              console.log('Switching to clothing');
+              switched = true;
+              return 'clothing';
+            }
+            return prevForm;
           });
-        } else if (gestureState.dx < -50) { 
-          // Swipe left - faster animation
-          Animated.timing(pan, {
-            toValue: { x: -300, y: 0 },
-            duration: 150,
-            useNativeDriver: true,
-          }).start(() => {
-            setActiveForm('clothing');
-            pan.setValue({ x: 300, y: 0 });
-            Animated.timing(pan, {
-              toValue: { x: 0, y: 0 },
-              duration: 150,
-              useNativeDriver: true,
-            }).start();
-          });
-        } else {
-          // Reset - faster
-          Animated.timing(pan, {
+        }
+        if (switched) {
+          Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            duration: 100,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }).start();
+        } else {
+          pan.setValue({ x: 0, y: 0 });
         }
       },
     })
   ).current;
+
+  const animatedStyle = {
+    transform: pan.getTranslateTransform(),
+    flex: 2, // Ensure the animated view takes full space
+  };
 
   useEffect(() => {
     if (!isUserLoggedIn) {
@@ -336,11 +353,31 @@ export default function DonationDetails() {
       // Set a flag in AsyncStorage to indicate that the donation cart needs refreshing
       await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
 
-      // Clear donation items after saving
+      // Reset donation items after saving
       if (donationType === 'clothes') {
-        setClothingItems([]);
+        setClothingItems([
+          {
+            id: Date.now(),
+            type: '',
+            size: '',
+            color: '',
+            gender: '',
+            quantity: 1,
+            images: [],
+          },
+        ]);
       } else {
-        setToyItems([]);
+        setToyItems([
+          {
+            id: Date.now(),
+            name: '',
+            description: '',
+            ageGroup: '',
+            condition: '',
+            quantity: 1,
+            images: [],
+          },
+        ]);
       }
 
       setAlertTitle('Success!');
@@ -745,15 +782,25 @@ export default function DonationDetails() {
 
   const renderClothesForm = () => (
     <View style={styles.formSection}>
-        <Image 
-                                    source={require('../../assets/images/donation.png')} 
-                                    style={styles.navIcon} 
-                                  />
 
+      
       {clothingItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
+          <Text style={styles.MainTitle}>  Clothes</Text>
           <View style={styles.clothingItemHeader}>
-            <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
+            <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
+            <Image 
+              
+              source={require('../../assets/images/clothes1.png')} 
+              style={styles.navIcon} 
+              />
+                  <TouchableOpacity
+                    style={styles.addItemButton}
+                    onPress={addClothingItem}
+                  >
+                    <Plus size={16} color="white" />
+                
+                  </TouchableOpacity>
             {clothingItems.length > 1 && (
               <TouchableOpacity
                 onPress={() => removeClothingItem(item.id)}
@@ -790,28 +837,28 @@ export default function DonationDetails() {
                 ))}
               </View>
             )}
-
             <View style={styles.imageButtonsContainer}>
               <TouchableOpacity
-              
+                style={styles.imageButton}
                 onPress={() => pickImage(item.id)}
               >
                 <Image 
-                source={require('../../assets/images/picture.png')} 
-                style={styles.navIcon} 
-                />
+                    source={require('../../assets/images/picture.png')} 
+                    style={styles.navIcon} 
+                  />
+                <Text style={styles.imageButtonText}>Gallery</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                
+                style={styles.imageButton}
                 onPress={() => takePhoto(item.id)}
               >
                 <Image 
-                source={require('../../assets/images/camera.png')} 
-                style={styles.navIcon} 
-                />
+                    source={require('../../assets/images/camera.png')} 
+                    style={styles.navIcon} 
+                  />
+                <Text style={styles.imageButtonText}>Camera</Text>
               </TouchableOpacity>
-            
               </View>
               <View style={styles.imageButtonsContainer}>
                 <TouchableOpacity
@@ -824,7 +871,7 @@ export default function DonationDetails() {
                   />
                   <View style={styles.aiButtonTextContainer}>
                     <Text style={styles.aiButtonTitle}>AI Identify</Text>
-                    <Text style={styles.aiButtonDescription}>Let AI detect clothing type and color</Text>
+                    <Text style={styles.aiButtonDescription}>Let AI detect clothing & color</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -898,27 +945,73 @@ export default function DonationDetails() {
             )}
 
             <Text style={styles.label}>Clothing Type</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={item.type}
-                onValueChange={(value) => updateClothingItem(item.id, 'type', value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select type" value="" />
-                <Picker.Item label="T-Shirt" value="t-shirt" />
-                <Picker.Item label="Shirt" value="shirt" />
-                <Picker.Item label="Pants" value="pants" />
-                <Picker.Item label="Jeans" value="jeans" />
-                <Picker.Item label="Dress" value="dress" />
-                <Picker.Item label="Skirt" value="skirt" />
-                <Picker.Item label="Sweater" value="sweater" />
-                <Picker.Item label="Jacket" value="jacket" />
-                <Picker.Item label="Coat" value="coat" />
-                <Picker.Item label="Socks" value="socks" />
-                <Picker.Item label="Underwear" value="underwear" />
-                <Picker.Item label="Pajamas" value="pajamas" />
-                <Picker.Item label="Other" value="other" />
-              </Picker>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
+              {[
+                { label: 'T-Shirt', value: 't-shirt', img: require('../../assets/images/polo-shirt.png') },
+               
+                { label: 'Pants', value: 'pants', img: require('../../assets/images/pants.png') },
+                { label: 'Jeans', value: 'jeans', img: require('../../assets/images/jeans.png') },
+                { label: 'Dress', value: 'dress', img: require('../../assets/images/dress.png') },
+                { label: 'Skirt', value: 'skirt', img: require('../../assets/images/skirt.png') },
+                { label: 'Sweater', value: 'sweater', img: require('../../assets/images/sweater.png') },
+                { label: 'Jacket', value: 'jacket', img: require('../../assets/images/denim-jacket.png') },
+                { label: 'Coat', value: 'coat', img: require('../../assets/images/coat.png') },
+                { label: 'Socks', value: 'socks', img: require('../../assets/images/socks.png') },
+            
+                { label: 'Pajamas', value: 'pajamas', img: require('../../assets/images/pajamas.png') },
+                { label: 'Other', value: 'other', img: require('../../assets/images/clothes.png') },
+              ].map(option => {
+                // Determine if this clothing type was set by AI
+                const isAiType = clothingAiPredictions && clothingAiPredictions.length > 0 &&
+                  clothingAiPredictions.some(pred => mapAiLabelToPickerValue(pred.label) === option.value && item.type === option.value);
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={{
+                      alignItems: 'center',
+                      marginRight: 18,
+                      marginBottom: 12,
+                      opacity: item.type === option.value ? 1 : 0.6,
+                    }}
+                    onPress={() => updateClothingItem(item.id, 'type', option.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: item.type === option.value }}
+                  >
+                    <View style={{
+                      borderWidth: item.type === option.value ? 2 : 1,
+                      borderColor: item.type === option.value ? '#BE3E28' : '#ccc',
+                      borderRadius: 12,
+                      padding: 2,
+                      backgroundColor: item.type === option.value ? '#FCF2E9' : '#fff',
+                      position: 'relative',
+                    }}>
+                      <Image source={option.img} style={{ width: 40, height: 40, marginBottom: 2 }} />
+                      {/* AI badge bubble for clothing type */}
+                      {isAiType && (
+                        <View style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          backgroundColor: '#4285F4',
+                          borderRadius: 8,
+                          paddingHorizontal: 4,
+                          paddingVertical: 2,
+                          zIndex: 10,
+                        }}>
+                          <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>AI</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{option.label}</Text>
+                    {item.type === option.value && (
+                      <View style={{
+                        width: 12, height: 12, borderRadius: 6, backgroundColor: '#BE3E28',
+                        alignSelf: 'center', marginTop: 2
+                      }} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <Text style={styles.label}>Color 🎨</Text>
             <View style={styles.colorContainer}>
@@ -928,7 +1021,7 @@ export default function DonationDetails() {
                   <TouchableOpacity 
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: '#000000' },
+                      { backgroundColor: '#000000', opacity: item.color === 'black' ? 1 : 0.6 },
                       item.color === 'black' && styles.colorCircleSelected
                     ]}
                     onPress={() => updateClothingItem(item.id, 'color', 'black')}
@@ -938,7 +1031,7 @@ export default function DonationDetails() {
                   <TouchableOpacity 
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDDDDD' },
+                      { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDDDDD', opacity: item.color === 'white' ? 1 : 0.6 },
                       item.color === 'white' && styles.colorCircleSelected
                     ]}
                     onPress={() => updateClothingItem(item.id, 'color', 'white')}
@@ -948,7 +1041,7 @@ export default function DonationDetails() {
                   <TouchableOpacity 
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: '#FF0000' },
+                      { backgroundColor: '#FF0000', opacity: item.color === 'red' ? 1 : 0.6 },
                       item.color === 'red' && styles.colorCircleSelected
                     ]}
                     onPress={() => updateClothingItem(item.id, 'color', 'red')}
@@ -961,7 +1054,7 @@ export default function DonationDetails() {
                   <TouchableOpacity 
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: '#0000FF' },
+                      { backgroundColor: '#0000FF', opacity: item.color === 'blue' ? 1 : 0.6 },
                       item.color === 'blue' && styles.colorCircleSelected
                     ]}
                     onPress={() => updateClothingItem(item.id, 'color', 'blue')}
@@ -971,7 +1064,7 @@ export default function DonationDetails() {
                   <TouchableOpacity 
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: '#808080' },
+                      { backgroundColor: '#808080', opacity: item.color === 'grey' ? 1 : 0.6 },
                       item.color === 'grey' && styles.colorCircleSelected
                     ]}
                     onPress={() => updateClothingItem(item.id, 'color', 'grey')}
@@ -983,7 +1076,7 @@ export default function DonationDetails() {
                       <TouchableOpacity 
                         style={[
                           styles.colorCircle,
-                          { backgroundColor: item.color.startsWith('#') ? item.color : `#${item.color}` },
+                          { backgroundColor: item.color.startsWith('#') ? item.color : `#${item.color}`, opacity: 1 },
                           styles.colorCircleSelected
                         ]}
                       />
@@ -1176,156 +1269,34 @@ export default function DonationDetails() {
                   </View>
                   <Text style={styles.genderLabel}>Unisex</Text>
                 </TouchableOpacity>
-              
-
-              {/* <View style={styles.genderOptionsRow}> */}
-                {/* Boys Option */}
-                {/* <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', 'boys')}
-                >
-                  <View style={[
-                    styles.genderRadioCircle, 
-                    item.gender === 'boys' && styles.genderRadioCircleSelected,
-                    { backgroundColor: item.gender === 'boys' ? '#e6f7ff' : '#e6f7ff50' }
-                  ]}>
-                    {item.gender === 'boys' && <View style={styles.genderRadioInnerCircle} />}
-                  </View>
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === 'boys' ? '#e6f7ff' : '#e6f7ff50' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" 
-                        stroke="#2196F3" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M16 8L20 4M18 4H20V6" 
-                        stroke="#2196F3" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M8 16L4 20M6 20H4V18" 
-                        stroke="#2196F3" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>Boys</Text>
-                </TouchableOpacity> */}
-
-                {/* Girls Option */}
-                {/* <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', 'girls')}
-                >
-                  <View style={[
-                    styles.genderRadioCircle, 
-                    item.gender === 'girls' && styles.genderRadioCircleSelected,
-                    { backgroundColor: item.gender === 'girls' ? '#fff0f5' : '#fff0f550' }
-                  ]}>
-                    {item.gender === 'girls' && <View style={styles.genderRadioInnerCircle} />}
-                  </View>
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === 'girls' ? '#fff0f5' : '#fff0f550' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" 
-                        stroke="#E91E63" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M12 16V20M10 18H14" 
-                        stroke="#E91E63" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M15 5L17 3M16 3H17V4" 
-                        stroke="#E91E63" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M9 5L7 3M8 3H7V4" 
-                        stroke="#E91E63" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>Girls</Text>
-                </TouchableOpacity> */}
-
-                {/* None Option */}
-                {/* <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', '')}
-                >
-                  <View style={[
-                    styles.genderRadioCircle, 
-                    item.gender === '' && styles.genderRadioCircleSelected,
-                    { backgroundColor: item.gender === '' ? '#f5f5f5' : '#f5f5f550' }
-                  ]}>
-                    {item.gender === '' && <View style={styles.genderRadioInnerCircle} />}
-                  </View>
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === '' ? '#f5f5f5' : '#f5f5f550' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        d="M8.19531 8.76498C8.42304 8.06326 8.84053 7.43829 9.40137 6.95899C9.96221 6.47968 10.6444 6.16501 11.373 6.0494C12.1017 5.9338 12.8486 6.02202 13.5303 6.3042C14.2119 6.58637 14.8016 7.05166 15.2354 7.64844C15.6691 8.24521 15.9295 8.95008 15.9875 9.68554C16.0455 10.421 15.8985 11.1581 15.5636 11.8154C15.2287 12.4728 14.7192 13.0251 14.0901 13.4106C13.4611 13.7961 12.7377 14.0002 12 14.0002V14.9998M12.0498 19V19.1L11.9502 19.1002V19H12.0498Z" 
-                        stroke="#757575" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>None</Text>
-                </TouchableOpacity> */}
-              {/* </View> */}
-            </View>
-
-            
+            </View> 
           </View>
         </View>
       ))}
-
-      <TouchableOpacity
-        style={styles.addItemButton}
-        onPress={addClothingItem}
-      >
-        <Plus size={16} color="white" />
-        <Text style={styles.addItemButtonText}>Add Another Item</Text>
-      </TouchableOpacity>
     </View>
   );
 
   const renderToysForm = () => (
     <View style={styles.formSection}>
-      
+             
+                
 
       {toyItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
           <View style={styles.clothingItemHeader}>
-            <Text style={styles.clothingItemTitle}>Item #{index + 1}</Text>
+            <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
+            <Image 
+              
+              source={require('../../assets/images/donation.png')} 
+              style={styles.navIcon} 
+              />
+            <TouchableOpacity
+        style={styles.addItemButton}
+        onPress={addClothingItem}
+      >
+        <Plus size={16} color="white" />
+     
+      </TouchableOpacity>
             {toyItems.length > 1 && (
               <TouchableOpacity
                 onPress={() => removeToyItem(item.id)}
@@ -1616,13 +1587,7 @@ export default function DonationDetails() {
         </View>
       ))}
 
-      <TouchableOpacity
-        style={styles.addItemButton}
-        onPress={addToyItem}
-      >
-        <Plus size={16} color="white" />
-        <Text style={styles.addItemButtonText}>Add Another Item</Text>
-      </TouchableOpacity>
+     
     </View>
   );
 
@@ -1663,7 +1628,7 @@ export default function DonationDetails() {
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.submitButtonText}>
-                Save Donation for Pickup {donationType === 'clothes' ? '👚' : '🧸'}
+                Save Donation for Pickup   
               </Text>
             )}
           </TouchableOpacity>
@@ -1726,17 +1691,17 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   formSection: {
-    padding: 16,
-    marginBottom: 8,
+    padding: 1,
+    marginBottom: 1,
     backgroundColor: 'white',
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginTop: 16,
+    borderRadius: 15,
+    marginHorizontal: 1,
+    marginTop: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 5,
   },
   sectionTitle: {
     fontSize: 18,
@@ -1842,10 +1807,10 @@ const styles = StyleSheet.create({
   },
   clothingItemContainer: {
     backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-    padding: 5,
-    marginBottom: 16,
-    borderWidth: 1,
+    borderRadius: 17,
+    padding: 8,
+    marginBottom: 18,
+    borderWidth: 2,
     borderColor: '#E0E0E0',
     
   },
@@ -1860,6 +1825,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  MainTitle: {
+    fontSize: 25,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+
+    textAlign: 'center',
+  },
   removeItemButton: {
     backgroundColor: '#BE3E28',
     borderRadius: 12,
@@ -1870,12 +1843,14 @@ const styles = StyleSheet.create({
   },
   addItemButton: {
     backgroundColor: '#65a765',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 20,
+    padding: 2,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row', 
-    marginTop: 8,
+    marginTop: 0,
   },
   addItemButtonText: {
     color: 'white',
@@ -2050,8 +2025,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   navIcon: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
   },
   genderRadioContainer: {
     backgroundColor: '#fff',
