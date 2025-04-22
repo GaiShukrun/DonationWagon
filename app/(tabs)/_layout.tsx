@@ -1,8 +1,8 @@
 import { Tabs } from 'expo-router';
 import { router } from 'expo-router';
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { Home, TruckIcon, Calendar, User, HeartHandshake } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
+import { Home, TruckIcon, Calendar, User } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 
 const windowWidth = Dimensions.get('window').width;
@@ -45,7 +45,10 @@ export default function TabLayout() {
           style={styles.navItem}
           onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
         >
-          <User color="#2D5A27" size={24} />
+          <Image 
+            source={require('../../assets/images/bussiness-man.png')} 
+            style={styles.navIcon} 
+          />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
 
@@ -53,7 +56,10 @@ export default function TabLayout() {
           style={styles.navItem}
           onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
         >
-          <HeartHandshake color="#2D5A27" size={24} />
+          <Image 
+            source={require('../../assets/images/Donate.png')} 
+            style={styles.navIcon} 
+          />
           <Text style={styles.navText}>Donate</Text>
         </TouchableOpacity>
         
@@ -61,7 +67,10 @@ export default function TabLayout() {
           style={styles.navItem}
           onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
         >
-          <Calendar color="#2D5A27" size={24} />
+          <Image 
+            source={require('../../assets/images/calendar.png')} 
+            style={styles.navIcon} 
+          />
           <Text style={styles.navText}>Schedule</Text>
         </TouchableOpacity>
         
@@ -70,7 +79,10 @@ export default function TabLayout() {
           style={styles.navItem}
           onPress={() => handleNavigation('/')}
         >
-          <Home color="#2D5A27" size={24} />
+          <Image 
+            source={require('../../assets/images/house.png')} 
+            style={styles.navIcon} 
+          />
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
       </View>
@@ -104,4 +116,10 @@ const styles = StyleSheet.create({
     color: '#2D5A27',
     marginTop: 4,
   },
+  navIcon: {
+    width: 30,
+    height: 30,
+    
+  },
+ 
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,18 +14,25 @@ import {
   StatusBar,
   RefreshControl,
 } from 'react-native';
+import Svg, { Path, Circle, G, Rect, Line } from 'react-native-svg';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import { ArrowLeft, Camera, X, Plus, Minus, Image as ImageIcon } from 'lucide-react-native';
+import { ArrowLeft, Camera, X, Plus, Minus, Image as ImageIcon, Cpu } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
+import ClothingAnalyzer from '@/components/ClothingAnalyzer';
+// import { InferenceClient } from '@huggingface/inference';
+import { PanResponder, Animated } from 'react-native';
 import { CustomAlertMessage } from '@/components/CustomAlertMessage';
 import DonationCart from '@/components/DonationCart';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleGenAI } from "@google/genai";
 import { createUserContent, createPartFromUri } from '@google/genai';
 
+const SWIPE_THRESHOLD = 70;
+const SWIPE_DISTANCE = 20;
+const ANIMATION_DURATION = 40;
 
 export default function DonationDetails() {
   const { isUserLoggedIn, requireAuth, user } = useAuth();
@@ -38,6 +45,9 @@ export default function DonationDetails() {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [showClothingAnalyzer, setShowClothingAnalyzer] = useState(false);
+  const [currentItemId, setCurrentItemId] = useState<number | null>(null);
 
   const [detectingNow, setDetectingNow] = useState(false);
 

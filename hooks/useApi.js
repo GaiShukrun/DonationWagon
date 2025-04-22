@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
 
-// Base URL for API requests
-// const API_URL = 'http://3.122.68.211:3000'; // Updated to correct IP address
+// Gai
+// const API_URL = 'http://3.122.68.211:3000'; 
 
 // Vlad
 const API_URL = 'http://10.0.0.41:3000';

@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   RefreshControl,
+  Image
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
@@ -74,29 +75,35 @@ export default function DonateTab() {
         }
       >
         <View style={styles.content}>
-          <Text style={styles.title}>What would you like to donate?</Text>
-          <Text style={styles.subtitle}>Choose a donation category to begin</Text>
+          
+        
           
           <View style={styles.categories}>
           <TouchableOpacity 
-              style={[styles.categoryCard, { backgroundColor: '#2D5A27' }]}
+              style={[styles.categoryCard, { backgroundColor: '#2D5A37' }]}
               onPress={() => handleCategoryPress('Infant Toys')}
             >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <BabyIcon color="white" size={24} />
+              <View style={[styles.categoryIconContainer, { backgroundColor: '#2D5A37' }]}>
+                <Image 
+                  source={require('../../assets/images/donation.png')} 
+                  style={styles.navIcon} 
+                />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Infant Toys</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Educational toys, stuffed animals</Text>
+              <Text style={[styles.categoryTitle, { color: '#e8f5e9' }]}> Toys</Text>
+              <Text style={[styles.categoryDescription, { color: '#e8f5e9' }]}>Educational toys, stuffed animals</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.categoryCard, { backgroundColor: '#BE3E28' }]}
+              style={[styles.categoryCard, { backgroundColor: '#BE3E48' }]}
               onPress={() => handleCategoryPress('Clothes')}
             >
-              <View style={[styles.categoryIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <ShirtIcon color="white" size={24} />
+              <View style={[styles.categoryIconContainer, { backgroundColor: '#BE3E48' }]}>
+              <Image 
+                  source={require('../../assets/images/clothes-rack.png')} 
+                  style={styles.navIcon} 
+                />
               </View>
-              <Text style={[styles.categoryTitle, { color: 'white' }]}>Clothes</Text>
-              <Text style={[styles.categoryDescription, { color: 'white' }]}>Shirts, pants, dresses</Text>
+              <Text style={[styles.categoryTitle, { color: '#e8f5e9' }]}>Clothes</Text>
+              <Text style={[styles.categoryDescription, { color: '#e8f5e9' }]}>Shirts, pants, dresses</Text>
             </TouchableOpacity>
 
        
@@ -163,13 +170,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2D5A27',
+    color: '#666',
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#666',
-    marginBottom: 30,
+    marginBottom: 10,
   },
   categories: {
     flexDirection: 'row',
@@ -178,7 +186,7 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     borderRadius: 16,
-    padding: 20,
+    padding: 15,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
@@ -260,5 +268,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  navIcon: {
+    width: 40,
+    height: 40,
   },
 });
