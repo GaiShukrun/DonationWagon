@@ -262,31 +262,23 @@ export const AuthProvider = ({ children }) => {
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch(`${API_URL}/update-profile-image`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          profileImage: imageUri
-        }),
+      const response = await api.put('/update-profile-image', {
+        userId: user.id,
+        profileImage: imageUri,
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update profile image');
+      if (!response) {
+        throw new Error(api.error || 'Failed to update profile image');
       }
 
       // Update user in state and AsyncStorage
-      const updatedUser = data.user;
+      const updatedUser = response.user;
       setUser(updatedUser);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
 
       return { success: true, user: updatedUser };
     } catch (error) {
-      console.error('Error updating profile image:', error);
+      console.error('Error updating profile image via API:', error);
       return { success: false, error: error.message };
     }
   };
