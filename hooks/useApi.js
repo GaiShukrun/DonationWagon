@@ -92,6 +92,29 @@ export const useApi = () => {
   }, []);
 
   /**
+   * Make a PUT request to the API
+   * @param {string} endpoint - API endpoint
+   * @param {Object} data - Request body
+   * @param {Object} config - Axios config
+   * @returns {Promise<any>} Response data
+   */
+  const put = useCallback(async (endpoint, data = {}, config = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.put(`${API_URL}${endpoint}`, data, config);
+      return response.data;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('API Error (PUT):', errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
    * Clear any existing error
    */
   const clearError = useCallback(() => {
@@ -104,6 +127,7 @@ export const useApi = () => {
     clearError,
     get,
     post,
+    put,
     delete: deleteRequest
   };
 };
