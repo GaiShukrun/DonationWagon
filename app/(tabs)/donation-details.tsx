@@ -25,7 +25,8 @@ import { CustomAlertMessage } from '@/components/CustomAlertMessage';
 import DonationCart from '@/components/DonationCart';
 import ClothingAnalyzer from '@/components/ClothingAnalyzer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { InferenceClient } from '@huggingface/inference';
+import { GoogleGenAI } from "@google/genai";
+import { createUserContent, createPartFromUri } from '@google/genai';
 import { PanResponder, Animated } from 'react-native';
 
 const SWIPE_THRESHOLD = 70;
@@ -44,7 +45,168 @@ export default function DonationDetails() {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showClothingAnalyzer, setShowClothingAnalyzer] = useState(false);
-  const [currentItemId, setCurrentItemId] = useState<number | null>(null);
+  const [detectingNow, setDetectingNow] = useState(false);
+  const [ai, setAI] = useState(null);
+  
+  useEffect(() => {
+    async function loadKey() {
+      try {
+        const response = await api.get("/gemini-api-key");
+        const apiKey = response.apiKey;
+        const aiInstance = new GoogleGenAI({ apiKey });
+        setAI(aiInstance);
+      } catch (err) {
+        console.error("Error loading API key:", err);
+      }
+    }
+
+    loadKey();
+  }, []);
+
+  async function detectAICloth(imageUri: string, itemId: number) {
+    setDetectingNow(true);
+    
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
+      
+      const myfile = await ai.files.upload({
+        file: imageFile,
+        config: { mimeType: "image/jpeg" }
+      });
+      
+      const generationResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash-thinking-exp-01-21",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
+              { text: "Identify this clothing item with: 1) specific cloth type (e.g., t-shirt, jeans, dress, jacket), 2) primary color in hex format, 3) size (XS, S, M, L, XL, XXL), and 4) likely gender (men, women, unisex). Return only the exact format: \"type,hex_color,size,gender\" with no other words or symbols. Example: \"t-shirt,#0000FF,L,men\"" }
+            ]
+          }
+        ]
+      });
+      
+      const aiText = generationResponse.text?.trim().toLowerCase();
+      console.log("AI response:", aiText);
+
+      if (aiText && aiText.includes(',')) {
+        const [type, color, size, gender] = aiText.split(',').map((part: string) => part.trim());
+        
+        // Normalize color to hex format if needed
+        const normalizedColor = color.startsWith('#') ? color : `#${color}`;
+        
+        // Map common clothing types to our form options
+        const typeMapping: Record<string, string> = {
+          't-shirt': 't-shirt',
+          'shirt': 'shirt',
+          'jeans': 'pants',
+          'pants': 'pants',
+          'dress': 'dress',
+          'jacket': 'jacket',
+          'sweater': 'sweater',
+          'shorts': 'shorts',
+          'skirt': 'skirt'
+        };
+        
+        const normalizedType = typeMapping[type] || type;
+        
+        // Normalize size to uppercase (M instead of m)
+        const normalizedSize = size.toUpperCase();
+        
+        // Normalize gender to always be lowercase for consistent badge logic
+        const normalizedGender = gender.toLowerCase();
+        
+        setClothingItems(prevItems =>
+  prevItems.map(item =>
+    item.id === itemId
+      ? { 
+          ...item, 
+          type: normalizedType, 
+          color: normalizedColor,
+          size: normalizedSize,
+          gender: normalizedGender,
+          aiSelectedType: true,
+          aiSelectedColor: true,
+          aiSelectedSize: true,
+          aiSelectedGender: true,
+          aiGender: normalizedGender // Store the AI's gender output for badge logic
+        }
+      : item
+  )
+);
+      }
+    } catch (error) {
+      console.error("Error detecting AI:", error);
+    } finally {
+      setDetectingNow(false);
+    }
+  }
+
+  async function detectAIToy(imageUri: string, itemId: number) {
+    setDetectingNow(true);
+    
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
+      
+      const myfile = await ai.files.upload({
+        file: imageFile,
+        config: { mimeType: "image/jpeg" }
+      });
+      
+      const generationResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash-thinking-exp-01-21",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
+              { text: "Identify this toy with: 1) name (e.g., Lego set, Barbie doll), 2) description (brief details about the toy), 3) age group (infant, toddler, child, teen), and 4) condition (new, like new, used, needs repair). Return only the exact format: \"name,description,age group,condition\" with no other words or symbols. Example: \"Lego set,Classic brick building set,child,like new\"" }
+            ]
+          }
+        ]
+      });
+      
+      const aiText = generationResponse.text?.trim().toLowerCase();
+      console.log("AI response:", aiText);
+      if (aiText && aiText.includes(',')) {
+        const [name, description, ageGroup, condition] = aiText.split(',').map(part => part.trim());
+        
+        // Format condition to match radio button values
+        const formattedCondition = condition 
+          ? condition.split(' ').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ')
+          : condition;
+        
+        setToyItems(prevItems =>
+          prevItems.map(item =>
+            item.id === itemId
+              ? { 
+                  ...item, 
+                  name, 
+                  description, 
+                  ageGroup,
+                  condition: formattedCondition,
+                  aiSelectedName: true,
+                  aiSelectedDescription: true,
+                  aiSelectedAgeGroup: true,
+                  aiSelectedCondition: true
+                }
+              : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error detecting AI:", error);
+    } finally {
+      setDetectingNow(false);
+    }
+  }
 
   const [clothingItems, setClothingItems] = useState([
     {
@@ -55,6 +217,10 @@ export default function DonationDetails() {
       gender: '',
       quantity: 1,
       images: [] as string[],
+      aiSelectedType: false,
+      aiSelectedColor: false,
+      aiSelectedSize: false,
+      aiSelectedGender: false
     },
   ]);
 
@@ -67,6 +233,10 @@ export default function DonationDetails() {
       condition: '',
       quantity: 1,
       images: [] as string[],
+      aiSelectedName: false,
+      aiSelectedDescription: false,
+      aiSelectedAgeGroup: false,
+      aiSelectedCondition: false
     },
   ]);
 
@@ -74,22 +244,6 @@ export default function DonationDetails() {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
-
-  // State for AI analysis results - Clothing
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [clothingAiPredictions, setClothingAiPredictions] = useState<Array<{label: string, score: number}> | null>(null);
-  const [aiColors, setAiColors] = useState<Array<{hex: string, score: number}> | null>(null);
-  const [selectedClothingAiType, setSelectedClothingAiType] = useState<string | null>(null);
-  const [selectedAiColor, setSelectedAiColor] = useState<string | null>(null);
-  const [showClothingTypeOptions, setShowClothingTypeOptions] = useState(false);
-  const [showColorOptions, setShowColorOptions] = useState(false);
-  
-  // State for AI analysis results - Toys
-  const [isToyAnalyzing, setIsToyAnalyzing] = useState(false);
-  const [toyAiPredictions, setToyAiPredictions] = useState<Array<{label: string, score: number}> | null>(null);
-  const [selectedToyAiType, setSelectedToyAiType] = useState<string | null>(null);
-  const [showToyTypeOptions, setShowToyTypeOptions] = useState(false);
-
 
   const [activeForm, setActiveForm] = useState<'clothing' | 'toys'>(() =>
     donationType === 'toys' ? 'toys' : 'clothing'
@@ -176,6 +330,10 @@ export default function DonationDetails() {
         gender: '',
         quantity: 1,
         images: [] as string[],
+        aiSelectedType: false,
+        aiSelectedColor: false,
+        aiSelectedSize: false,
+        aiSelectedGender: false
       }]);
     } else {
       setToyItems([{
@@ -186,6 +344,10 @@ export default function DonationDetails() {
         condition: '',
         quantity: 1,
         images: [] as string[],
+        aiSelectedName: false,
+        aiSelectedDescription: false,
+        aiSelectedAgeGroup: false,
+        aiSelectedCondition: false
       }]);
     }
     setImages([]);
@@ -364,6 +526,10 @@ export default function DonationDetails() {
             gender: '',
             quantity: 1,
             images: [],
+            aiSelectedType: false,
+            aiSelectedColor: false,
+            aiSelectedSize: false,
+            aiSelectedGender: false
           },
         ]);
       } else {
@@ -376,6 +542,10 @@ export default function DonationDetails() {
             condition: '',
             quantity: 1,
             images: [],
+            aiSelectedName: false,
+            aiSelectedDescription: false,
+            aiSelectedAgeGroup: false,
+            aiSelectedCondition: false
           },
         ]);
       }
@@ -405,6 +575,10 @@ export default function DonationDetails() {
         gender: '',
         quantity: 1,
         images: [],
+        aiSelectedType: false,
+        aiSelectedColor: false,
+        aiSelectedSize: false,
+        aiSelectedGender: false
       },
     ]);
   };
@@ -422,7 +596,17 @@ export default function DonationDetails() {
   const updateClothingItem = (id, field, value) => {
     setClothingItems(
       clothingItems.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
+        item.id === id
+          ? {
+              ...item,
+              [field]: value,
+              // Remove AI badge when manually changing any field
+              ...(field === 'gender' ? { aiSelectedGender: false } : {}),
+              ...(field === 'type' ? { aiSelectedType: false } : {}),
+              ...(field === 'color' ? { aiSelectedColor: false } : {}),
+              ...(field === 'size' ? { aiSelectedSize: false } : {})
+            }
+          : item
       )
     );
   };
@@ -456,6 +640,10 @@ export default function DonationDetails() {
         condition: '',
         quantity: 1,
         images: [],
+        aiSelectedName: false,
+        aiSelectedDescription: false,
+        aiSelectedAgeGroup: false,
+        aiSelectedCondition: false
       },
     ]);
   };
@@ -496,13 +684,11 @@ export default function DonationDetails() {
     );
   };
 
-  // Function to open the AI clothing analyzer for a specific item
   const openClothingAnalyzer = (itemId: number) => {
     setCurrentItemId(itemId);
     setShowClothingAnalyzer(true);
   };
   
-  // Function to analyze toys with AI directly in the form
   const analyzeToyWithAI = async (itemId: number) => {
     setCurrentItemId(itemId);
     setIsToyAnalyzing(true);
@@ -571,7 +757,6 @@ export default function DonationDetails() {
     }
   };
 
-  // Function to handle the results from the AI clothing analyzer
   const handleAIResults = (type: string, color: string) => {
     console.log('AI Results received:', { type, color });
     
@@ -598,7 +783,6 @@ export default function DonationDetails() {
     setShowClothingAnalyzer(false);
   };
 
-  // Function to analyze clothing with AI directly in the form
   const analyzeClothingWithAI = async (itemId: number) => {
     setCurrentItemId(itemId);
     setIsAnalyzing(true);
@@ -710,7 +894,6 @@ export default function DonationDetails() {
     }
   };
 
-  // Function to apply selected AI results to the form
   const applyAiResults = () => {
     if (currentItemId) {
       if (selectedClothingAiType) {
@@ -744,7 +927,6 @@ export default function DonationDetails() {
     }
   };
 
-  // Function to map AI prediction labels to Picker values
   const mapAiLabelToPickerValue = (label: string): string => {
     // Convert label to lowercase for easier comparison
     const lowerLabel = label.toLowerCase();
@@ -782,34 +964,22 @@ export default function DonationDetails() {
 
   const renderClothesForm = () => (
     <View style={styles.formSection}>
-
-      
       {clothingItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
-          <Text style={styles.MainTitle}>  Clothes</Text>
-          <View style={styles.clothingItemHeader}>
-            <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
-            <Image 
-              
-              source={require('../../assets/images/clothes1.png')} 
-              style={styles.navIcon} 
-              />
-                  <TouchableOpacity
-                    style={styles.addItemButton}
-                    onPress={addClothingItem}
-                  >
-                    <Plus size={16} color="white" />
-                
-                  </TouchableOpacity>
-            {clothingItems.length > 1 && (
-              <TouchableOpacity
-                onPress={() => removeClothingItem(item.id)}
-                style={styles.removeItemButton}
-              >
-                <X size={10} color="white" />
+          <View style={[styles.clothingItemHeader, {justifyContent: 'space-between', alignItems: 'center'}]}>
+            {clothingItems.length > 1 ? (
+              <TouchableOpacity onPress={() => removeClothingItem(item.id)} style={styles.removeItemButton}>
+                <X size={16} color="white" />
               </TouchableOpacity>
+            ) : (
+              <View style={{ width: 30, height: 30 }} />
             )}
+            <Text style={styles.MainTitle}>Clothes</Text>
+            <TouchableOpacity style={styles.addItemButton} onPress={addClothingItem}>
+              <Plus size={16} color="white" />
+            </TouchableOpacity>
           </View>
+          <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
 
           {/* Image upload section for each clothing item */}
           <View style={styles.imageSection}>
@@ -863,7 +1033,7 @@ export default function DonationDetails() {
               <View style={styles.imageButtonsContainer}>
                 <TouchableOpacity
                   style={styles.aiButtonContainer}
-                  onPress={() => analyzeClothingWithAI(item.id)}
+                  onPress={() => detectAICloth(item.images[0], item.id)}
                 >
                   <Image 
                     source={require('../../assets/images/ai.png')} 
@@ -875,82 +1045,17 @@ export default function DonationDetails() {
                   </View>
                 </TouchableOpacity>
               </View>
-            {isAnalyzing && (
+            {detectingNow && (
               <ActivityIndicator size="small" color="#333" />
             )}
-
-            {clothingAiPredictions && showClothingTypeOptions && (
-              <View>
-                <Text style={styles.label}>AI Clothing Type Suggestions</Text>
-                <View style={styles.aiPredictionsContainer}>
-                  {clothingAiPredictions.map((prediction: {label: string, score: number}) => (
-                    <TouchableOpacity
-                      key={prediction.label}
-                      style={[styles.aiPredictionButton, selectedClothingAiType === prediction.label && styles.aiPredictionButtonSelected]}
-                      onPress={() => {
-                        setSelectedClothingAiType(mapAiLabelToPickerValue(prediction.label));
-                        // Immediately update the clothing type in the form
-                        if (currentItemId) {
-                          setClothingItems(prevItems => prevItems.map(item => {
-                            if (item.id === currentItemId) {
-                              return { ...item, type: mapAiLabelToPickerValue(prediction.label) };
-                            }
-                            return item;
-                          }));
-                        }
-                        // Hide the options after selection
-                        setShowClothingTypeOptions(false);
-                      }}
-                    >
-                      <Text style={[styles.aiPredictionText, selectedClothingAiType === prediction.label && styles.aiPredictionTextSelected]}>
-                        {prediction.label} ({Math.round(prediction.score * 100)}%)
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {aiColors && showColorOptions && (
-              <View>
-                <Text style={styles.label}>AI Color Suggestions</Text>
-                <View style={styles.aiColorsRowContainer}>
-                  {aiColors.slice(0, 3).map((color, index) => (
-                    <TouchableOpacity
-                      key={color.hex}
-                      style={[styles.aiColorCircleButton, selectedAiColor === color.hex && styles.aiColorCircleButtonSelected]}
-                      onPress={() => {
-                        setSelectedAiColor(color.hex);
-                        // Immediately update the color in the form
-                        if (currentItemId) {
-                          setClothingItems(prevItems => prevItems.map(item => {
-                            if (item.id === currentItemId) {
-                              return { ...item, color: color.hex };
-                            }
-                            return item;
-                          }));
-                        }
-                        // Hide the options after selection
-                        setShowColorOptions(false);
-                      }}
-                    >
-                      <View style={[styles.aiColorCircle, { backgroundColor: color.hex }]} />
-                      <Text style={styles.aiColorPercentage}>
-                        {Math.round(color.score * 100)}%
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
             <Text style={styles.label}>Clothing Type</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               {[
                 { label: 'T-Shirt', value: 't-shirt', img: require('../../assets/images/polo-shirt.png') },
-               
+                { label: 'Shorts', value: 'shorts', img: require('../../assets/images/shorts.png') },
                 { label: 'Pants', value: 'pants', img: require('../../assets/images/pants.png') },
                 { label: 'Jeans', value: 'jeans', img: require('../../assets/images/jeans.png') },
+                { label: 'Tank-Top', value: 'tank-top', img: require('../../assets/images/tank-top.png') },
                 { label: 'Dress', value: 'dress', img: require('../../assets/images/dress.png') },
                 { label: 'Skirt', value: 'skirt', img: require('../../assets/images/skirt.png') },
                 { label: 'Sweater', value: 'sweater', img: require('../../assets/images/sweater.png') },
@@ -962,14 +1067,13 @@ export default function DonationDetails() {
                 { label: 'Other', value: 'other', img: require('../../assets/images/clothes.png') },
               ].map(option => {
                 // Determine if this clothing type was set by AI
-                const isAiType = clothingAiPredictions && clothingAiPredictions.length > 0 &&
-                  clothingAiPredictions.some(pred => mapAiLabelToPickerValue(pred.label) === option.value && item.type === option.value);
+                const isAiType = item.type === option.value;
                 return (
                   <TouchableOpacity
                     key={option.value}
                     style={{
                       alignItems: 'center',
-                      marginRight: 18,
+                      marginRight: 20,
                       marginBottom: 12,
                       opacity: item.type === option.value ? 1 : 0.6,
                     }}
@@ -978,16 +1082,17 @@ export default function DonationDetails() {
                     accessibilityState={{ selected: item.type === option.value }}
                   >
                     <View style={{
-                      borderWidth: item.type === option.value ? 2 : 1,
+                      borderWidth: item.type === option.value ? 1 : 1.5,
                       borderColor: item.type === option.value ? '#BE3E28' : '#ccc',
-                      borderRadius: 12,
-                      padding: 2,
+                      borderRadius: 22,
+                      padding: 3,
                       backgroundColor: item.type === option.value ? '#FCF2E9' : '#fff',
-                      position: 'relative',
+                      position: 'static',
+                        
                     }}>
                       <Image source={option.img} style={{ width: 40, height: 40, marginBottom: 2 }} />
                       {/* AI badge bubble for clothing type */}
-                      {isAiType && (
+                      {isAiType && item.aiSelectedType && (
                         <View style={{
                           position: 'absolute',
                           top: -8,
@@ -1003,18 +1108,12 @@ export default function DonationDetails() {
                       )}
                     </View>
                     <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{option.label}</Text>
-                    {item.type === option.value && (
-                      <View style={{
-                        width: 12, height: 12, borderRadius: 6, backgroundColor: '#BE3E28',
-                        alignSelf: 'center', marginTop: 2
-                      }} />
-                    )}
                   </TouchableOpacity>
                 );
               })}
             </View>
             <Text style={styles.label}>Color 🎨</Text>
-            <View style={styles.colorContainer}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.colorOptionsRow}>
                   {/* Black */}
@@ -1090,92 +1189,134 @@ export default function DonationDetails() {
             </View>
 
             <Text style={styles.label}>Size</Text>
-            <View style={styles.colorContainer}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 5 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sizeOptionsRow}>
                   {/* XS Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'XS' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'XS')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'XS' && styles.sizeCircleTextSelected
-                    ]}>XS</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'XS' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'XS')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'XS' && styles.sizeCircleTextSelected
+                      ]}>XS</Text>
+                    </TouchableOpacity>
+                    {item.size === 'XS' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                   
                   {/* S Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'S' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'S')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'S' && styles.sizeCircleTextSelected
-                    ]}>S</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'S' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'S')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'S' && styles.sizeCircleTextSelected
+                      ]}>S</Text>
+                    </TouchableOpacity>
+                    {item.size === 'S' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                   
                   {/* M Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'M' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'M')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'M' && styles.sizeCircleTextSelected
-                    ]}>M</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'M' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'M')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'M' && styles.sizeCircleTextSelected
+                      ]}>M</Text>
+                    </TouchableOpacity>
+                    {item.size === 'M' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                   
                   {/* L Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'L' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'L')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'L' && styles.sizeCircleTextSelected
-                    ]}>L</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'L' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'L')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'L' && styles.sizeCircleTextSelected
+                      ]}>L</Text>
+                    </TouchableOpacity>
+                    {item.size === 'L' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                   
                   {/* XL Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'XL' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'XL')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'XL' && styles.sizeCircleTextSelected
-                    ]}>XL</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'XL' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'XL')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'XL' && styles.sizeCircleTextSelected
+                      ]}>XL</Text>
+                    </TouchableOpacity>
+                    {item.size === 'XL' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                   
                   {/* XXL Size */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.size === 'XXL' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateClothingItem(item.id, 'size', 'XXL')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.size === 'XXL' && styles.sizeCircleTextSelected
-                    ]}>XXL</Text>
-                  </TouchableOpacity>
+                  <View style={{position: 'relative'}}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sizeCircle,
+                        item.size === 'XXL' && styles.sizeCircleSelected
+                      ]}
+                      onPress={() => updateClothingItem(item.id, 'size', 'XXL')}
+                    >
+                      <Text style={[
+                        styles.sizeCircleText,
+                        item.size === 'XXL' && styles.sizeCircleTextSelected
+                      ]}>XXL</Text>
+                    </TouchableOpacity>
+                    {item.size === 'XXL' && item.aiSelectedSize && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </ScrollView>
             </View>
@@ -1183,96 +1324,118 @@ export default function DonationDetails() {
            
             <Text style={styles.label}>Gender</Text>
             
-              
               <View style={styles.genderOptionsRow}>
                 {/* Men Option */}
-                <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', 'men')}
-                >
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === 'men' ? '#e6f2ff' : '#e6f2ff50' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        fillRule="evenodd" 
-                        clipRule="evenodd" 
-                        d="M14.9415 8.60977C14.6486 8.90266 14.6486 9.37754 14.9415 9.67043C15.2344 9.96332 15.7093 9.96332 16.0022 9.67043L14.9415 8.60977ZM18.9635 6.70907C19.2564 6.41617 19.2564 5.9413 18.9635 5.64841C18.6706 5.35551 18.1958 5.35551 17.9029 5.64841L18.9635 6.70907ZM16.0944 5.41461C15.6802 5.41211 15.3424 5.74586 15.3399 6.16007C15.3374 6.57428 15.6711 6.91208 16.0853 6.91458L16.0944 5.41461ZM18.4287 6.92872C18.8429 6.93122 19.1807 6.59747 19.1832 6.18326C19.1857 5.76906 18.8519 5.43125 18.4377 5.42875L18.4287 6.92872ZM19.1832 6.17421C19.1807 5.76001 18.8429 5.42625 18.4287 5.42875C18.0145 5.43125 17.6807 5.76906 17.6832 6.18326L19.1832 6.17421ZM17.6973 8.52662C17.6998 8.94082 18.0377 9.27458 18.4519 9.27208C18.8661 9.26958 19.1998 8.93177 19.1973 8.51756L17.6973 8.52662ZM16.0022 9.67043L18.9635 6.70907L17.9029 5.64841L14.9415 8.60977L16.0022 9.67043ZM16.0853 6.91458L18.4287 6.92872L18.4377 5.42875L16.0944 5.41461L16.0853 6.91458ZM17.6832 6.18326L17.6973 8.52662L19.1973 8.51756L19.1832 6.17421L17.6832 6.18326Z"
-                        fill="#4285F4"
-                      />
-                      <Path 
-                        d="M15.5631 16.1199C14.871 16.81 13.9885 17.2774 13.0288 17.462C12.0617 17.6492 11.0607 17.5459 10.1523 17.165C8.29113 16.3858 7.07347 14.5723 7.05656 12.5547C7.04683 11.0715 7.70821 9.66348 8.8559 8.72397C10.0036 7.78445 11.5145 7.4142 12.9666 7.71668C13.9237 7.9338 14.7953 8.42902 15.4718 9.14008C16.4206 10.0503 16.9696 11.2996 16.9985 12.6141C17.008 13.9276 16.491 15.1903 15.5631 16.1199Z" 
-                        stroke="#4285F4" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>Men</Text>
-                </TouchableOpacity>
-
+                
+                  <TouchableOpacity 
+                    style={styles.genderRadioOption}
+                    onPress={() => updateClothingItem(item.id, 'gender', 'men')}
+                  >
+                    <View style={[
+                      styles.genderIconContainer,
+                      { backgroundColor: item.gender === 'men' ? '#e6f2ff' : '#e6f2ff50' }
+                    ]}>
+                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <Path 
+                          fillRule="evenodd" 
+                          clipRule="evenodd" 
+                          d="M14.9415 8.60977C14.6486 8.90266 14.6486 9.37754 14.9415 9.67043C15.2344 9.96332 15.7093 9.96332 16.0022 9.67043L14.9415 8.60977ZM18.9635 6.70907C19.2564 6.41617 19.2564 5.9413 18.9635 5.64841C18.6706 5.35551 18.1958 5.35551 17.9029 5.64841L18.9635 6.70907ZM16.0944 5.41461C15.6802 5.41211 15.3424 5.74586 15.3399 6.16007C15.3374 6.57428 15.6711 6.91208 16.0853 6.91458L16.0944 5.41461ZM18.4287 6.92872C18.8429 6.93122 19.1807 6.59747 19.1832 6.18326C19.1857 5.76906 18.8519 5.43125 18.4377 5.42875L18.4287 6.92872ZM19.1832 6.17421C19.1807 5.76001 18.8429 5.42625 18.4287 5.42875C18.0145 5.43125 17.6807 5.76906 17.6832 6.18326L19.1832 6.17421ZM17.6973 8.52662C17.6998 8.94082 18.0377 9.27458 18.4519 9.27208C18.8661 9.26958 19.1998 8.93177 19.1973 8.51756L17.6973 8.52662ZM16.0022 9.67043L18.9635 6.70907L17.9029 5.64841L14.9415 8.60977L16.0022 9.67043ZM16.0853 6.91458L18.4287 6.92872L18.4377 5.42875L16.0944 5.41461L16.0853 6.91458ZM17.6832 6.18326L17.6973 8.52662L19.1973 8.51756L19.1832 6.17421L17.6832 6.18326Z"
+                          fill="#4285F4"
+                        />
+                        <Path 
+                          d="M15.5631 16.1199C14.871 16.81 13.9885 17.2774 13.0288 17.462C12.0617 17.6492 11.0607 17.5459 10.1523 17.165C8.29113 16.3858 7.07347 14.5723 7.05656 12.5547C7.04683 11.0715 7.70821 9.66348 8.8559 8.72397C10.0036 7.78445 11.5145 7.4142 12.9666 7.71668C13.9237 7.9338 14.7953 8.42902 15.4718 9.14008C16.4206 10.0503 16.9696 11.2996 16.9985 12.6141C17.008 13.9276 16.491 15.1903 15.5631 16.1199Z" 
+                          stroke="#4285F4" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                        />
+                      </Svg>
+                    </View>
+                    <Text style={styles.genderLabel}>{item.gender === 'men' ? 'Men' : 'men'}</Text>
+                  </TouchableOpacity>
+                  {item.gender === 'men' && item.aiSelectedGender && item.gender === item.aiGender && (
+                    <View style={styles.aiColorBadge}>
+                      <Text style={styles.aiColorBadgeText}>AI</Text>
+                    </View>
+                  )}
+                
+                
                 {/* Women Option */}
-                <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', 'women')}
-                >
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === 'women' ? '#ffebf0' : '#ffebf050' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        fillRule="evenodd" 
-                        clipRule="evenodd" 
-                        d="M20 9C20 13.0803 16.9453 16.4471 12.9981 16.9383C12.9994 16.9587 13 16.9793 13 17V19H14C14.5523 19 15 19.4477 15 20C15 20.5523 14.5523 21 14 21H13V22C13 22.5523 12.5523 23 12 23C11.4477 23 11 22.5523 11 22V21H10C9.44772 21 9 20.5523 9 20C9 19.4477 9.44772 19 10 19H11V17C11 16.9793 11.0006 16.9587 11.0019 16.9383C7.05466 16.4471 4 13.0803 4 9C4 4.58172 7.58172 1 12 1C16.4183 1 20 4.58172 20 9ZM6.00365 9C6.00365 12.3117 8.68831 14.9963 12 14.9963C15.3117 14.9963 17.9963 12.3117 17.9963 9C17.9963 5.68831 15.3117 3.00365 12 3.00365C8.68831 3.00365 6.00365 5.68831 6.00365 9Z" 
-                        fill="#FF4081"
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>Women</Text>
-                </TouchableOpacity>
-
+                
+                  <TouchableOpacity 
+                    style={styles.genderRadioOption}
+                    onPress={() => updateClothingItem(item.id, 'gender', 'women')}
+                  >
+                    <View style={[
+                      styles.genderIconContainer,
+                      { backgroundColor: item.gender === 'women' ? '#ffebf0' : '#ffebf050' }
+                    ]}>
+                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <Path 
+                          fillRule="evenodd" 
+                          clipRule="evenodd" 
+                          d="M20 9C20 13.0803 16.9453 16.4471 12.9981 16.9383C12.9994 16.9587 13 16.9793 13 17V19H14C14.5523 19 15 19.4477 15 20C15 20.5523 14.5523 21 14 21H13V22C13 22.5523 12.5523 23 12 23C11.4477 23 11 22.5523 11 22V21H10C9.44772 21 9 20.5523 9 20C9 19.4477 9.44772 19 10 19H11V17C11 16.9793 11.0006 16.9587 11.0019 16.9383C7.05466 16.4471 4 13.0803 4 9C4 4.58172 7.58172 1 12 1C16.4183 1 20 4.58172 20 9ZM6.00365 9C6.00365 12.3117 8.68831 14.9963 12 14.9963C15.3117 14.9963 17.9963 12.3117 17.9963 9C17.9963 5.68831 15.3117 3.00365 12 3.00365C8.68831 3.00365 6.00365 5.68831 6.00365 9Z" 
+                          fill="#FF4081"
+                        />
+                      </Svg>
+                    </View>
+                    <Text style={styles.genderLabel}>{item.gender === 'women' ? 'Women' : 'women'}</Text>
+                  </TouchableOpacity>
+                  {item.gender === 'women' && item.aiSelectedGender && item.gender === item.aiGender && (
+                    <View style={styles.aiColorBadge}>
+                      <Text style={styles.aiColorBadgeText}>AI</Text>
+                    </View>
+                  )}
+                
+                
                 {/* Unisex Option */}
-                <TouchableOpacity 
-                  style={styles.genderRadioOption}
-                  onPress={() => updateClothingItem(item.id, 'gender', 'unisex')}
-                >
-                  <View style={[
-                    styles.genderIconContainer,
-                    { backgroundColor: item.gender === 'unisex' ? '#f0e6ff' : '#f0e6ff50' }
-                  ]}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path 
-                        d="M12 10C13.6569 10 15 8.65685 15 7C15 5.34315 13.6569 4 12 4C10.3431 4 9 5.34315 9 7C9 8.65685 10.3431 10 12 10Z" 
-                        stroke="#9C27B0" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M12 10V16M9 13H15" 
-                        stroke="#9C27B0" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                      <Path 
-                        d="M17.5 20.5L12 16L6.5 20.5" 
-                        stroke="#9C27B0" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    </Svg>
-                  </View>
-                  <Text style={styles.genderLabel}>Unisex</Text>
-                </TouchableOpacity>
+                
+                  <TouchableOpacity 
+                    style={styles.genderRadioOption}
+                    onPress={() => updateClothingItem(item.id, 'gender', 'unisex')}
+                  >
+                    <View style={[
+                      styles.genderIconContainer,
+                      { backgroundColor: item.gender === 'unisex' ? '#f0e6ff' : '#f0e6ff50' }
+                    ]}>
+                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <Path 
+                          d="M12 10C13.6569 10 15 8.65685 15 7C15 5.34315 13.6569 4 12 4C10.3431 4 9 5.34315 9 7C9 8.65685 10.3431 10 12 10Z" 
+                          stroke="#9C27B0" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                        />
+                        <Path 
+                          d="M12 10V16M9 13H15" 
+                          stroke="#9C27B0" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                        />
+                        <Path 
+                          d="M17.5 20.5L12 16L6.5 20.5" 
+                          stroke="#9C27B0" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                        />
+                      </Svg>
+                    </View>
+                    <Text style={styles.genderLabel}>{item.gender === 'unisex' ? 'unisex' : 'unisex'}</Text>
+                  </TouchableOpacity>
+                  {item.gender === 'unisex' && item.aiSelectedGender && item.gender === item.aiGender && (
+                    <View style={styles.aiColorBadge}>
+                      <Text style={styles.aiColorBadgeText}>AI</Text>
+                    </View>
+                  )}
+                
             </View> 
           </View>
+          
         </View>
       ))}
+      
     </View>
   );
 
@@ -1283,29 +1446,20 @@ export default function DonationDetails() {
 
       {toyItems.map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
-          <View style={styles.clothingItemHeader}>
-            <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
-            <Image 
-              
-              source={require('../../assets/images/donation.png')} 
-              style={styles.navIcon} 
-              />
-            <TouchableOpacity
-        style={styles.addItemButton}
-        onPress={addClothingItem}
-      >
-        <Plus size={16} color="white" />
-     
-      </TouchableOpacity>
-            {toyItems.length > 1 && (
-              <TouchableOpacity
-                onPress={() => removeToyItem(item.id)}
-                style={styles.removeItemButton}
-              >
+          <View style={[styles.clothingItemHeader, {justifyContent: 'space-between', alignItems: 'center'}]}>
+            {toyItems.length > 1 ? (
+              <TouchableOpacity onPress={() => removeToyItem(item.id)} style={styles.removeItemButton}>
                 <X size={16} color="white" />
               </TouchableOpacity>
+            ) : (
+              <View style={{ width: 30, height: 30 }} />
             )}
+            <Text style={styles.MainTitle}>Toys</Text>
+            <TouchableOpacity style={styles.addItemButton} onPress={addToyItem}>
+              <Plus size={16} color="white" />
+            </TouchableOpacity>
           </View>
+          <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
 
           {/* Image upload section for each toy item */}
           <View style={styles.imageSection}>
@@ -1361,7 +1515,7 @@ export default function DonationDetails() {
               <View style={styles.imageButtonsContainer}>
                 <TouchableOpacity
                   style={styles.aiButtonContainer}
-                  onPress={() => analyzeToyWithAI(item.id)}
+                  onPress={() => detectAIToy(item.images[0], item.id)}
                 >
                   <Image 
                     source={require('../../assets/images/ai.png')} 
@@ -1373,12 +1527,12 @@ export default function DonationDetails() {
                   </View>
                 </TouchableOpacity>
               </View>
-              {isToyAnalyzing && (
+              {detectingNow && (
                 <ActivityIndicator size="small" color="#333" />
               )}
               
               {/* AI Predictions for Toys */}
-              {toyAiPredictions && showToyTypeOptions && (
+              {/* {toyAiPredictions && showToyTypeOptions && (
                 <View>
                   <Text style={styles.label}>AI Suggestions</Text>
                   <View style={styles.aiPredictionsContainer}>
@@ -1409,7 +1563,7 @@ export default function DonationDetails() {
                     ))}
                   </View>
                 </View>
-              )}
+              )} */}
             <Text style={styles.label}>Item Name</Text>
             <TextInput
               style={styles.input}
@@ -1429,7 +1583,7 @@ export default function DonationDetails() {
             />
 
             <Text style={styles.label}>Age Group 👶👧👦</Text>
-            <View style={styles.colorContainer}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sizeOptionsRow}>
                   {/* Infant */}
@@ -1444,6 +1598,11 @@ export default function DonationDetails() {
                       styles.sizeCircleText,
                       item.ageGroup === 'infant' && styles.sizeCircleTextSelected
                     ]}>0-1</Text>
+                    {item.ageGroup === 'infant' && item.aiSelectedAgeGroup && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* Toddler */}
@@ -1458,34 +1617,30 @@ export default function DonationDetails() {
                       styles.sizeCircleText,
                       item.ageGroup === 'toddler' && styles.sizeCircleTextSelected
                     ]}>1-3</Text>
+                    {item.ageGroup === 'toddler' && item.aiSelectedAgeGroup && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
-                  {/* Preschool */}
+                  {/* Child */}
                   <TouchableOpacity 
                     style={[
                       styles.sizeCircle,
-                      item.ageGroup === 'preschool' && styles.sizeCircleSelected
+                      item.ageGroup === 'child' && styles.sizeCircleSelected
                     ]}
-                    onPress={() => updateToyItem(item.id, 'ageGroup', 'preschool')}
+                    onPress={() => updateToyItem(item.id, 'ageGroup', 'child')}
                   >
                     <Text style={[
                       styles.sizeCircleText,
-                      item.ageGroup === 'preschool' && styles.sizeCircleTextSelected
-                    ]}>3-5</Text>
-                  </TouchableOpacity>
-                  
-                  {/* School Age */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.sizeCircle,
-                      item.ageGroup === 'school' && styles.sizeCircleSelected
-                    ]}
-                    onPress={() => updateToyItem(item.id, 'ageGroup', 'school')}
-                  >
-                    <Text style={[
-                      styles.sizeCircleText,
-                      item.ageGroup === 'school' && styles.sizeCircleTextSelected
-                    ]}>5-12</Text>
+                      item.ageGroup === 'child' && styles.sizeCircleTextSelected
+                    ]}>3-12</Text>
+                    {item.ageGroup === 'child' && item.aiSelectedAgeGroup && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* Teen */}
@@ -1500,6 +1655,11 @@ export default function DonationDetails() {
                       styles.sizeCircleText,
                       item.ageGroup === 'teen' && styles.sizeCircleTextSelected
                     ]}>12+</Text>
+                    {item.ageGroup === 'teen' && item.aiSelectedAgeGroup && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* All Ages */}
@@ -1514,69 +1674,98 @@ export default function DonationDetails() {
                       styles.sizeCircleText,
                       item.ageGroup === 'all' && styles.sizeCircleTextSelected
                     ]}>All</Text>
+                    {item.ageGroup === 'all' && item.aiSelectedAgeGroup && (
+                      <View style={styles.aiColorBadge}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               </ScrollView>
             </View>
 
             <Text style={styles.label}>Condition ✨</Text>
-            <View style={styles.colorContainer}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sizeOptionsRow}>
                   {/* New */}
                   <TouchableOpacity 
                     style={[
                       styles.sizeCircle,
-                      item.condition === 'new' && styles.sizeCircleSelected
+                      item.condition === 'New' && styles.sizeCircleSelected,
+                      {position: 'relative'}
                     ]}
-                    onPress={() => updateToyItem(item.id, 'condition', 'new')}
+                    onPress={() => updateToyItem(item.id, 'condition', 'New')}
                   >
                     <Text style={[
                       styles.sizeCircleText,
-                      item.condition === 'new' && styles.sizeCircleTextSelected
+                      item.condition === 'New' && styles.sizeCircleTextSelected
                     ]}>New</Text>
+                    {item.condition === 'New' && item.aiSelectedCondition && (
+                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* Like New */}
                   <TouchableOpacity 
                     style={[
                       styles.sizeCircle,
-                      item.condition === 'like_new' && styles.sizeCircleSelected
+                      item.condition === 'Like New' && styles.sizeCircleSelected,
+                      {position: 'relative'}
                     ]}
-                    onPress={() => updateToyItem(item.id, 'condition', 'like_new')}
+                    onPress={() => updateToyItem(item.id, 'condition', 'Like New')}
                   >
                     <Text style={[
                       styles.sizeCircleText,
-                      item.condition === 'like_new' && styles.sizeCircleTextSelected
+                      item.condition === 'Like New' && styles.sizeCircleTextSelected
                     ]}>Like New</Text>
+                    {item.condition === 'Like New' && item.aiSelectedCondition && (
+                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* Good */}
                   <TouchableOpacity 
                     style={[
                       styles.sizeCircle,
-                      item.condition === 'good' && styles.sizeCircleSelected
+                      item.condition === 'Good' && styles.sizeCircleSelected,
+                      {position: 'relative'}
                     ]}
-                    onPress={() => updateToyItem(item.id, 'condition', 'good')}
+                    onPress={() => updateToyItem(item.id, 'condition', 'Good')}
                   >
                     <Text style={[
                       styles.sizeCircleText,
-                      item.condition === 'good' && styles.sizeCircleTextSelected
+                      item.condition === 'Good' && styles.sizeCircleTextSelected
                     ]}>Good</Text>
+                    {item.condition === 'Good' && item.aiSelectedCondition && (
+                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   
                   {/* Fair */}
                   <TouchableOpacity 
                     style={[
                       styles.sizeCircle,
-                      item.condition === 'fair' && styles.sizeCircleSelected
+                      item.condition === 'Fair' && styles.sizeCircleSelected,
+                      {position: 'relative'}
                     ]}
-                    onPress={() => updateToyItem(item.id, 'condition', 'fair')}
+                    onPress={() => updateToyItem(item.id, 'condition', 'Fair')}
                   >
                     <Text style={[
                       styles.sizeCircleText,
-                      item.condition === 'fair' && styles.sizeCircleTextSelected
+                      item.condition === 'Fair' && styles.sizeCircleTextSelected
                     ]}>Fair</Text>
+                    {item.condition === 'Fair' && item.aiSelectedCondition && (
+                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                        <Text style={styles.aiColorBadgeText}>AI</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -1591,13 +1780,27 @@ export default function DonationDetails() {
     </View>
   );
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    if (activeForm === 'clothing') {
+      setClothingItems([{ id: 1, type: '', size: '', color: '', gender: '', quantity: 1, images: [] as string[], aiSelectedType: false, aiSelectedColor: false, aiSelectedSize: false, aiSelectedGender: false }]);
+    } else {
+      setToyItems([{ id: 1, name: '', description: '', ageGroup: '', condition: '', quantity: 1, images: [] as string[], aiSelectedName: false, aiSelectedDescription: false, aiSelectedAgeGroup: false, aiSelectedCondition: false }]);
+    }
+    setImages([]);
+    setRefreshing(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView style={styles.scrollView}>
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
           {showDonationCart && (
             <DonationCart
               onDonationTypeSelected={(type) => handleStartNewDonation(type)}
@@ -1605,16 +1808,15 @@ export default function DonationDetails() {
           )}
          
 
-          <View style={styles.container} {...panResponder.panHandlers}>
-            <Animated.View 
+          <Animated.View 
               style={[
                 styles.formContainer,
                 { transform: [{ translateX: pan.x }] }
               ]}
+              {...panResponder.panHandlers}
             >
               {activeForm === 'clothing' ? renderClothesForm() : renderToysForm()}
             </Animated.View>
-          </View>
 
           <TouchableOpacity
             style={[
@@ -1629,6 +1831,7 @@ export default function DonationDetails() {
             ) : (
               <Text style={styles.submitButtonText}>
                 Save Donation for Pickup   
+                
               </Text>
             )}
           </TouchableOpacity>
@@ -1664,19 +1867,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCF2E9',
-    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0,
+    
     // paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: {
     flex: 1,
   },
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingVertical: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   backButton: {
     marginRight: 16,
@@ -1691,17 +1895,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   formSection: {
-    padding: 1,
+    padding: 18,
     marginBottom: 1,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    marginHorizontal: 1,
-    marginTop: 1,
+    backgroundColor: '#FCF2E9',
+    borderRadius: 10,
+    marginHorizontal: 0,
+    marginTop: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    
   },
   sectionTitle: {
     fontSize: 18,
@@ -1791,11 +1993,12 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#ef5454',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 22,
+    padding: 10,
     alignItems: 'center',
-    margin: 16,
-    marginTop: 24,
+    margin: 10,
+    marginTop: 5,
+    marginBottom: 10,
   },
   clothesButton: {
     backgroundColor: '#ef5454',
@@ -1806,13 +2009,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   clothingItemContainer: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 17,
-    padding: 8,
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   clothingItemHeader: {
     flexDirection: 'row',
@@ -1830,15 +2035,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
-
     textAlign: 'center',
   },
   removeItemButton: {
     backgroundColor: '#BE3E28',
-    borderRadius: 12,
-    width: 14,
-    height: 14,
+    borderRadius: 20,
+    width: 30,
+    height: 30,
     alignItems: 'center',
+    flexDirection: 'row', 
     justifyContent: 'center',
   },
   addItemButton: {
@@ -2000,9 +2205,6 @@ const styles = StyleSheet.create({
   aiColorButtonSelected: {
     backgroundColor: '#E0E0E0',
   },
-  aiColorCircleButtonSelected: {
-    backgroundColor: '#F0F8FF',
-  },
   aiColorText: {
     fontSize: 16,
     color: '#333',
@@ -2023,6 +2225,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  navIcon1: {
+    width: 20,
+    height: 20,
   },
   navIcon: {
     width: 50,
@@ -2097,11 +2303,11 @@ const styles = StyleSheet.create({
   },
   sizeOptionsRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
   sizeCircle: {
-    width: 40,
-    height: 40,
+    width: 35,
+    height: 35,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
