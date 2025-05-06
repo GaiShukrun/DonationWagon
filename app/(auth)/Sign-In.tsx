@@ -90,13 +90,7 @@ export default function SignIn() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackToLanding}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-
+       
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue donating</Text>
 
@@ -191,18 +185,13 @@ const styles = StyleSheet.create({
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0,
   },
   content: {
-    flex: 1,
+    flex: 90,
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    padding: 10,
-  },
+  
   backButtonText: {
     fontSize: 16,
     color: '#2D5A27',
@@ -212,7 +201,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2D5A27',
-    marginBottom: 10,
+    marginBottom: 5,
     textAlign: 'center',
   },
   subtitle: {

@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scheduleButton: {
-    backgroundColor: '#2D5A27',
+    backgroundColor: '#65a765',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -534,10 +534,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   activeButton: {
-    backgroundColor: '#2D5A27',
+    backgroundColor: '#e8f5e9',
   },
   activeButtonText: {
-    color: '#fff',
+    color: '#2D5A27',
   },
   buttonText: {
     marginLeft: 10,

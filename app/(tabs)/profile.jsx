@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
 import { LogOutIcon, User, Camera } from 'lucide-react-native';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Polygon, Rect, Stop } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DonationCart from '@/components/DonationCart';
@@ -103,6 +104,7 @@ export default function ProfileScreen() {
   // Pick an image from the gallery
   const pickImage = async () => {
     try {
+     
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
@@ -200,63 +202,60 @@ export default function ProfileScreen() {
         <View style={styles.content}>
           {/* Profile Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>My Profile</Text>
-            <TouchableOpacity 
+            
+            {/* <TouchableOpacity 
               style={styles.signOutButton}
               onPress={handleSignOut}
             >
-              <LogOutIcon color="white" size={16} style={styles.signOutIcon} />
+              <LogOutIcon color="black" size={20} style={styles.signOutIcon} />
               <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {/* Profile Card */}
-          <View style={styles.profileCard}>
-            <TouchableOpacity 
-              style={styles.avatarContainer}
-              onPress={pickImage}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="large" color="#2D5A27" />
-              ) : profileImage ? (
-                <>
+          <View style={styles.card}>
+              <View style={styles.card__img}>
+                <Image 
+                  source={require('@/assets/images/background2.png')} 
+                  style={{
+                    width: '100%', 
+                    height: '100%', 
+                    borderTopLeftRadius: 16, 
+                    borderTopRightRadius: 16
+                  }} 
+                  resizeMode="cover" 
+                />
+              </View>
+              <TouchableOpacity style={styles.card__avatar} onPress={pickImage} disabled={isLoading}>
+                {isLoading ? (
+                  <ActivityIndicator size="large" color="#2D5A27" />
+                ) : profileImage ? (
                   <Image source={{ uri: profileImage }} style={styles.profileImage} />
-                  <View style={styles.cameraIconOverlay}>
-                    <Camera color="#fff" size={20} />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <User color="#2D5A27" size={64} />
-                  <View style={styles.cameraIconOverlay}>
-                    <Camera color="#fff" size={20} />
-                  </View>
-                </>
-              )}
-            </TouchableOpacity>
-            <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user.firstname} {user.lastname}</Text>
-              <Text style={styles.userPoints}>{user.points || 0} Points</Text>
+                ) : (
+                  <Svg viewBox="0 0 128 128" width="100px" height="100px">
+                    <Circle cx="64" cy="64" fill="#ff8475" r="60" />
+                    <Circle cx="64" cy="64" fill="#f85565" opacity=".4" r="48" />
+                    <Path d="m64 14a32 32 0 0 1 32 32v41a6 6 0 0 1 -6 6h-52a6 6 0 0 1 -6-6v-41a32 32 0 0 1 32-32z" fill="#7f3838" />
+                    {/* Truncated SVG for brevity */}
+                    <Path d="m64 84c5 0 7-3 7-3h-14s2 3 7 3z" fill="#f85565" opacity=".4" />
+                    <Path d="m65.07 78.93-.55.55a.73.73 0 0 1 -1 0l-.55-.55c-1.14-1.14-2.93-.93-4.27.47l-1.7 1.6h14l-1.66-1.6c-1.34-1.4-3.13-1.61-4.27-.47z" fill="#f85565" />
+                  </Svg>
+                )}
+              </TouchableOpacity>
+              <Text style={styles.card__title}>{user.firstname} {user.lastname}</Text>
+              
+              <View style={styles.card__wrapper}>
+                <TouchableOpacity style={styles.card__btn} onPress={pickImage}>
+                  <Text>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.card__btn, styles.card__btn_solid]} onPress={handleSignOut}>
+                  <Text style={{color: '#fff'}}>Logout</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
           {/* Additional Profile Information */}
-          <View style={styles.infoSection}>
-            <Text style={styles.sectionTitle}>Account Information</Text>
-            
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>First Name</Text>
-              <Text style={styles.infoValue}>{user.firstname}</Text>
-            </View>
-            
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Last Name</Text>
-              <Text style={styles.infoValue}>{user.lastname}</Text>
-            </View>
-            
-            {/* Removed username display for security */}
-          </View>
+        
           
           {/* User Stats Section */}
           <View style={styles.infoSection}>
@@ -264,7 +263,7 @@ export default function ProfileScreen() {
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
                 <Text style={styles.statNumber}>{user.itemsDonated || '0'}</Text>
-                <Text style={styles.statLabel}>Items Donated</Text>
+                <Text style={styles.statLabel}>Items    Donated</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statNumber}>{user.points || '0'}</Text>
@@ -289,12 +288,12 @@ export default function ProfileScreen() {
           
           {/* Debug/Testing Section */}
           <View style={styles.actionSection}>
-            <TouchableOpacity 
+            {/* <TouchableOpacity 
               style={styles.resetButton}
               onPress={resetProfileImage}
             >
               <Text style={styles.resetButtonText}>Reset Profile Image</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </ScrollView>
@@ -333,7 +332,7 @@ const styles = StyleSheet.create({
     color: '#2D5A27',
   },
   signOutButton: {
-    backgroundColor: '#BE3E28',
+    backgroundColor: '#FCF2E9',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -341,19 +340,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutText: {
-    color: 'white',
+    color: 'black',
     fontWeight: '600',
     marginLeft: 4,
   },
   signOutIcon: {
     marginRight: 4,
   },
-  profileCard: {
-    flexDirection: 'row',
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  card: {
+    position: 'relative',
+    width: '100%',
+    height: 384,
+    display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderRadius: 16,
-    padding: 20,
+    backgroundColor: '#fff',
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -364,44 +371,56 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FCF2E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 20,
-    position: 'relative',
+  card__img: {
+    height: 192,
+    width: '100%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  cameraIconOverlay: {
+  card__avatar: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#2D5A27',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
+    width: 114,
+    height: 114,
+    backgroundColor: '#fff',
+    borderRadius: 57,
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+    top: 135,
   },
-  profileInfo: {
-    flex: 1,
+  card__title: {
+    marginTop: 60,
+    fontWeight: '500',
+    fontSize: 18,
+    color: '#000',
   },
-  userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2D5A27',
-    marginBottom: 5,
+  card__subtitle: {
+    marginTop: 10,
+    fontWeight: '400',
+    fontSize: 15,
+    color: '#78858F',
   },
-  userPoints: {
-    fontSize: 16,
-    color: '#666',
+  card__wrapper: {
+    marginTop: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '60%',
+  },
+  card__btn: {
+    marginTop: 15,
+    width: 76,
+    height: 31,
+    borderWidth: 2,
+    borderColor: '#000',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  card__btn_solid: {
+    backgroundColor: '#000',
+    color: '#fff',
   },
   infoSection: {
     backgroundColor: 'white',
@@ -460,8 +479,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   statCard: {
-    backgroundColor: '#FCF2E9',
-    padding: 16,
+    backgroundColor: '#e8f5e9',
+    padding: 10,
     borderRadius: 12,
     width: '30%',
     alignItems: 'center',

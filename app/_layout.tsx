@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { View, LogBox } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import TopBar from '@/components/TopBar';
 
 // Disable yellow box warnings
 LogBox.ignoreAllLogs();
@@ -64,6 +65,7 @@ export default function RootLayout() {
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <View style={{ flex: 1, backgroundColor: 'black'}}>
             <StatusBar backgroundColor="black" style="light" />
+            <TopBar />
             <Stack 
               screenOptions={{
                 headerShown: false,
