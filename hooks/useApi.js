@@ -1,9 +1,8 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
 
-// Gai
-// const API_URL = 'http://3.122.68.211:3000'; 
-
+// Base URL for API requests
+// const API_URL = 'http://10.0.0.20:3000'; // Updated to use your computer's actual IP address
 // Vlad
 const API_URL = 'http://10.0.0.41:3000';
 
@@ -26,10 +25,10 @@ export const useApi = () => {
     setError(null);
     
     try {
-      // console.log(`Making GET request to: ${API_URL}${endpoint}`);
+      console.log(`Making GET request to: ${API_URL}${endpoint}`);
       const response = await axios.get(`${API_URL}${endpoint}`, config);
-      // console.log('Response status:', response.status);
-      // console.log('Response data:', response.data);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
       return response.data;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
@@ -94,6 +93,29 @@ export const useApi = () => {
   }, []);
 
   /**
+   * Make a PUT request to the API
+   * @param {string} endpoint - API endpoint
+   * @param {Object} data - Request body
+   * @param {Object} config - Axios config
+   * @returns {Promise<any>} Response data
+   */
+  const put = useCallback(async (endpoint, data = {}, config = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.put(`${API_URL}${endpoint}`, data, config);
+      return response.data;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('API Error (PUT):', errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
    * Clear any existing error
    */
   const clearError = useCallback(() => {
@@ -106,6 +128,7 @@ export const useApi = () => {
     clearError,
     get,
     post,
+    put,
     delete: deleteRequest
   };
 };
