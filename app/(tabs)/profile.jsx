@@ -104,6 +104,7 @@ export default function ProfileScreen() {
   // Pick an image from the gallery
   const pickImage = async () => {
     try {
+     
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
@@ -215,7 +216,7 @@ export default function ProfileScreen() {
           <View style={styles.card}>
               <View style={styles.card__img}>
                 <Image 
-                  source={require('@/assets/images/ProfileBackground.png')} 
+                  source={require('@/assets/images/background2.png')} 
                   style={{
                     width: '100%', 
                     height: '100%', 
