@@ -26,6 +26,30 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Authentication middleware
+const auth = async (req, res, next) => {
+    try {
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({ message: 'No authentication token, access denied' });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Auth middleware error:', error);
+        res.status(401).json({ message: 'Token is invalid' });
+    }
+};
+
 // Add a simple test endpoint
 app.get('/test', (req, res) => {
     res.json({ message: 'API is working!' });
@@ -35,7 +59,7 @@ app.post('/signup', async (req, res) => {
     console.log('Received signup request:', req.body);
 
     try {
-        const { username, password, firstname, lastname, securityQuestion, securityAnswer } = req.body;
+        const { username, password, firstname, lastname, securityQuestion, securityAnswer, userType } = req.body;
 
         // Validate required fields
         if (!username || !password || !firstname || !lastname || !securityQuestion || !securityAnswer) {
@@ -74,14 +98,15 @@ app.post('/signup', async (req, res) => {
             lastname,
             securityQuestion,
             securityAnswer,
-            points: 0
+            points: 0,
+            userType: userType || 'donor'
         });
 
         await newUser.save();
         
         // Generate JWT token
         const token = jwt.sign(
-            { id: newUser._id, username: newUser.username },
+            { id: newUser._id, username: newUser.username, userType: newUser.userType },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -95,7 +120,8 @@ app.post('/signup', async (req, res) => {
                 username: newUser.username,
                 firstname: newUser.firstname,
                 lastname: newUser.lastname,
-                points: newUser.points
+                points: newUser.points,
+                userType: newUser.userType
             }
         });
         
@@ -139,7 +165,7 @@ app.post('/login', async (req, res) => {
         // Generate JWT token
         console.log('Generating token...');
         const token = jwt.sign(
-            { id: user._id, username: user.username },
+            { id: user._id, username: user.username, userType: user.userType },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -154,7 +180,8 @@ app.post('/login', async (req, res) => {
                 firstname: user.firstname,
                 lastname: user.lastname,
                 points: user.points,
-                profileImage: user.profileImage
+                profileImage: user.profileImage,
+                userType: user.userType
             }
         });
     } catch (error) {
