@@ -11,7 +11,7 @@ import { useApi } from '@/hooks/useApi';
 const API_URL = 'http://10.0.0.41:3000';
 
 // Create the Auth Context
-const AuthContext = createContext({
+export const AuthContext = createContext({
   user: null,
   isUserLoggedIn: false,
   login: async (userData) => {},
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [showAuthRedirect, setShowAuthRedirect] = useState(false);
-  const [redirectPath, setRedirectPath] = useState('/(auth)/Sign-In');
+  const [redirectPath, setRedirectPath] = useState(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAuthMessage, setShowAuthMessage] = useState(false);
@@ -50,16 +50,16 @@ export const AuthProvider = ({ children }) => {
         const userData = await AsyncStorage.getItem('user');
         const storedToken = await AsyncStorage.getItem('token');
         if (userData && storedToken) {
-          setUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
           setToken(storedToken);
           setIsUserLoggedIn(true);
           
-          // Check if there's a pending action after login
+          // Handle pending actions
           const pendingAction = await AsyncStorage.getItem('pendingAuthAction');
           if (pendingAction) {
             const action = JSON.parse(pendingAction);
             if (action.pathname && action.params) {
-              // Execute the pending action
               setTimeout(() => {
                 router.push({
                   pathname: action.pathname,
@@ -68,6 +68,15 @@ export const AuthProvider = ({ children }) => {
                 AsyncStorage.removeItem('pendingAuthAction');
               }, 500);
             }
+          } else {
+            // Redirect to appropriate dashboard based on userType
+            setTimeout(() => {
+              if (parsedUser.userType === 'driver') {
+                router.replace('/driver-dashboard');
+              } else {
+                router.replace('/');
+              }
+            }, 500);
           }
         }
       } catch (error) {
@@ -83,22 +92,15 @@ export const AuthProvider = ({ children }) => {
   // Sign up function
   const signUp = async (userData) => {
     try {
-      const response = await api.post('/signup', {
-        username: userData.username,
-        password: userData.password,
-        firstname: userData.firstname,
-        lastname: userData.lastname,
-        securityQuestion: userData.securityQuestion,
-        securityAnswer: userData.securityAnswer
-      });
-
+      const response = await api.post('/signup', userData);
+      
       if (!response) {
-        throw new Error('Failed to sign up');
+        throw new Error(api.error || 'Failed to create account');
       }
 
       const { token, user } = response;
       
-      // Store token and user data
+      // Store authentication data
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       
@@ -107,23 +109,28 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setIsUserLoggedIn(true);
       
+      // Redirect to appropriate dashboard based on userType
+      setTimeout(() => {
+        if (user.userType === 'driver') {
+          router.replace('/driver-dashboard');
+        } else {
+          router.replace('/');
+        }
+      }, 500);
+      
       return true;
     } catch (error) {
-      console.error('Error signing up:', error.message);
-      throw new Error(error.message || 'Failed to sign up');
+      throw new Error(error.message || 'Failed to create account');
     }
   };
 
   // Login function
   const login = async (credentials) => {
     try {
-      // Check if credentials are provided
       if (!credentials.username || !credentials.password) {
         throw new Error('Username and password are required');
       }
 
-      console.log('Attempting to login with username:', credentials.username);
-      
       const response = await api.post('/login', {
         username: credentials.username,
         password: credentials.password
@@ -133,10 +140,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error(api.error || 'Invalid credentials');
       }
 
-      console.log('Login successful');
       const { token, user } = response;
       
-      // Store token and user data
+      // Store authentication data
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       
@@ -145,12 +151,11 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setIsUserLoggedIn(true);
       
-      // Check if there's a pending action after login
+      // Handle pending actions
       const pendingAction = await AsyncStorage.getItem('pendingAuthAction');
       if (pendingAction) {
         const action = JSON.parse(pendingAction);
         if (action.pathname && action.params) {
-          // Execute the pending action after a short delay
           setTimeout(() => {
             router.push({
               pathname: action.pathname,
@@ -159,11 +164,19 @@ export const AuthProvider = ({ children }) => {
             AsyncStorage.removeItem('pendingAuthAction');
           }, 500);
         }
+      } else {
+        // Redirect to appropriate dashboard based on userType
+        setTimeout(() => {
+          if (user.userType === 'driver') {
+            router.replace('/driver-dashboard');
+          } else {
+            router.replace('/');
+          }
+        }, 500);
       }
       
       return true;
     } catch (error) {
-      console.error('Error logging in:', error.message);
       throw new Error(error.message || 'Invalid credentials');
     }
   };
@@ -343,18 +356,29 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         requireAuth,
-        signUp,
         requestPasswordReset,
         verifySecurityQuestion,
+        signUp,
         updateProfileImage,
       }}
     >
       {children}
-      <AuthRedirectMessage 
-        visible={showAuthRedirect} 
-        redirectPath={redirectPath}
-        onClose={() => setShowAuthRedirect(false)}
-      />
+      {showAuthRedirect && (
+        <AuthRedirectMessage
+          message={authMessage}
+          onClose={() => {
+            setShowAuthRedirect(false);
+            setAuthMessage('');
+            setRedirectPath(null);
+          }}
+          onSignIn={() => {
+            setShowAuthRedirect(false);
+            setAuthMessage('');
+            setRedirectPath(null);
+            router.push('/Sign-In');
+          }}
+        />
+      )}
       <AuthRedirectMessage 
         visible={isSigningOut} 
         message="Signing out..." 
