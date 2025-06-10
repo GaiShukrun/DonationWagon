@@ -8,7 +8,15 @@ const userSchema = new mongoose.Schema({
     securityQuestion: {type: String, required: true},
     securityAnswer: {type: String, required: true},
     points: {type: Number, default: 0},
-    profileImage: {type: String, default: null}
+    profileImage: {type: String, default: null},
+    userType: {type: String, enum: ['donor', 'driver'], default: 'donor'},
+    // Driver specific fields
+    isAvailable: {type: Boolean, default: true},
+    currentLocation: {
+        latitude: {type: Number},
+        longitude: {type: Number}
+    },
+    activePickups: [{type: mongoose.Schema.Types.ObjectId, ref: 'Donation'}]
 });
 
 const User = mongoose.model('User', userSchema);
