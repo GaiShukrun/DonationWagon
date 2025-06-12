@@ -812,3 +812,32 @@ app.listen(PORT, '0.0.0.0', () => {
 app.get("/gemini-api-key", (req, res) => {
   res.json({apiKey: process.env.GEMINI_API_KEY});
 });
+
+// Get combined leaderboard
+app.get('/leaderboard', async (req, res) => {
+    try {
+        // Get all users (both donors and drivers)
+        const users = await User.find()
+            .select('firstname lastname points profileImage userType')
+            .sort({ points: -1 })
+            .limit(50);
+
+        res.json({
+            success: true,
+            leaderboard: users.map((user, index) => ({
+                rank: index + 1,
+                name: `${user.firstname} ${user.lastname}`,
+                points: user.points,
+                profileImage: user.profileImage,
+                userType: user.userType // 'donor' or 'driver'
+            }))
+        });
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching leaderboard', 
+            error: error.message 
+        });
+    }
+});
