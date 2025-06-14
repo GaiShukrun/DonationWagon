@@ -587,70 +587,92 @@ app.delete('/donation/:donationId', async (req, res) => {
 
 // Schedule pickup for a donation
 app.post('/schedule-pickup', async (req, res) => {
+  console.log('Scheduling pickup for donation:', req.body);
   try {
     const { donationId, pickupDate, userId } = req.body;
-    
+
     if (!donationId || !pickupDate || !userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Donation ID, pickup date, and user ID are required' 
+        message: 'Donation ID, pickup date, and user ID are required'
       });
     }
-    
+
     console.log('Scheduling pickup for donation:', donationId);
     console.log('Pickup date:', pickupDate);
-    
+
     // Convert string donationId to MongoDB ObjectId
     const mongoose = require('mongoose');
     let donationObjectId;
-    
+
     try {
       donationObjectId = new mongoose.Types.ObjectId(donationId);
     } catch (err) {
       console.error('Invalid ObjectId format:', err.message);
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Invalid donation ID format' 
+        message: 'Invalid donation ID format'
       });
     }
-    
-    // Find the donation and update its status and pickup date
+
+    // Find the donation
     const donation = await Donation.findById(donationObjectId);
-    
+
     if (!donation) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Donation not found' 
+        message: 'Donation not found'
       });
     }
-    
+
     // Verify that the donation belongs to the user
     if (donation.userId.toString() !== userId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: 'You are not authorized to schedule this donation' 
+        message: 'You are not authorized to schedule this donation'
       });
     }
-    
-    // Update the donation
+
+    // Only allow scheduling if donation is currently 'pending'
+    if (donation.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Donation cannot be scheduled because its status is '${donation.status}'. Only 'pending' donations can be scheduled.`
+      });
+    }
+
+    // Update the donation status and pickup date
     donation.status = 'scheduled';
     donation.pickupDate = new Date(pickupDate);
+
+    // Save and check if the update was successful
     await donation.save();
-    
-    console.log('Pickup scheduled successfully');
-    
-    return res.status(200).json({ 
+
+    // Double-check the update
+    const updatedDonation = await Donation.findById(donationObjectId);
+
+    if (updatedDonation.status !== 'scheduled') {
+      console.error('Failed to update donation status to scheduled');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update donation status'
+      });
+    }
+
+    console.log('Pickup scheduled successfully, status:', updatedDonation.status);
+
+    return res.status(200).json({
       success: true,
       message: 'Pickup scheduled successfully',
-      donation
+      donation: updatedDonation
     });
-    
+
   } catch (error) {
     console.error('Error scheduling pickup:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: 'Server error', 
-      error: error.message 
+      message: 'Server error',
+      error: error.message
     });
   }
 });
