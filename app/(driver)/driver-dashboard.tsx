@@ -8,11 +8,13 @@ import {
   RefreshControl,
   Alert,
   Platform,
+   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
 import { api } from '@/lib/api';
 import { MapPin, Package, CheckCircle, AlertCircle } from 'lucide-react-native';
+
 
 interface Pickup {
   _id: string;
@@ -20,6 +22,8 @@ interface Pickup {
   status: string;
   pickupAddress: string;
   pickupDate: string;
+  pickupNotes: string;
+  size: number;
   location: {
     latitude: number;
     longitude: number;
@@ -47,18 +51,38 @@ export default function DriverDashboard() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+
 
   useEffect(() => {
     const typedUser = user as User | null;
     if (!typedUser || typedUser.userType !== 'driver') {
       return;
     }
-    getCurrentLocation();
-    fetchPickups();
+    const init = async () => {
+      await getCurrentLocation();
+    };
+
+    init();
+
   }, [user]);
+
+  useEffect(() => {
+    if (!currentLocation) return;
+  
+    const fetchData = async () => {
+      await fetchPickups();
+    };
+  
+    fetchData();
+  }, [currentLocation]);
+  
 
   const getCurrentLocation = async () => {
     try {
+      setLocationLoading(true); // Stop loading regardless of success or error
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Location permission is required for this feature');
@@ -68,17 +92,19 @@ export default function DriverDashboard() {
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
       setCurrentLocation({ latitude, longitude });
-
       // Update driver's location in the backend
       await api.post('/driver/location', { latitude, longitude });
     } catch (error) {
       console.error('Error getting location:', error);
       Alert.alert('Error', 'Failed to get current location');
+    } finally {
+      setLocationLoading(false);
     }
   };
 
   const fetchPickups = async () => {
     try {
+      setIsLoading(true);
       setRefreshing(true);
       const params = currentLocation
         ? `?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}`
@@ -90,6 +116,7 @@ export default function DriverDashboard() {
       Alert.alert('Error', 'Failed to fetch available pickups');
     } finally {
       setRefreshing(false);
+      setIsLoading(false);
     }
   };
 
@@ -124,7 +151,14 @@ export default function DriverDashboard() {
         <Text style={styles.title}>Available Pickups</Text>
       </View>
 
-      {availablePickups.length === 0 ? (
+      {(isLoading || locationLoading) ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.loadingText}>
+            {locationLoading ? 'Calculating distances...' : 'Loading pickups...'}
+          </Text>
+        </View>
+      ) : availablePickups.length === 0 ? (
         <Text style={styles.emptyText}>No available pickups</Text>
       ) : (
         availablePickups.map((pickup) => (
@@ -148,6 +182,12 @@ export default function DriverDashboard() {
               </Text>
               <Text style={styles.detailText}>
                 Distance: {formatDistance(pickup.distance)}
+              </Text>
+              <Text style={styles.detailText}>
+                Size: {pickup.size}
+              </Text>
+              <Text style={styles.detailText}>
+                Note: {pickup.pickupNotes}
               </Text>
             </View>
             <TouchableOpacity
@@ -231,5 +271,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontStyle: 'italic',
     marginTop: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
 }); 

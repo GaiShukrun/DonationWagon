@@ -18,10 +18,13 @@ interface Pickup {
   status: string;
   pickupAddress: string;
   pickupDate: string;
+  pickupNotes: string;
+  size: number;
   location: {
     latitude: number;
     longitude: number;
   };
+  distance?: number;
   userId: {
     firstname: string;
     lastname: string;
@@ -97,6 +100,12 @@ export default function ActivePickups() {
               </Text>
               <Text style={styles.detailText}>
                 Date: {formatDate(pickup.pickupDate)}
+              </Text>
+              <Text style={styles.detailText}>
+                Size: {pickup.size}
+              </Text>
+              <Text style={styles.detailText}>
+                Note: {pickup.pickupNotes}
               </Text>
             </View>
             <TouchableOpacity
