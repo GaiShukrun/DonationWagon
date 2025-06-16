@@ -60,7 +60,8 @@ const donationSchema = new mongoose.Schema({
   updatedAt: { 
     type: Date, 
     default: Date.now 
-  }
+  },
+  size: { type: Number },
 });
 
 // Update the updatedAt field on save
