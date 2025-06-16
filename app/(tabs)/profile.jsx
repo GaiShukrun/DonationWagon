@@ -187,22 +187,27 @@ export default function ProfileScreen() {
       const response = await api.get(`/donations/user/${user.id}`);
       if (response && response.success && Array.isArray(response.donations)) {
         // Count picked up donations
-        const completedCount = response.donations.filter(
+        const completedDonations = response.donations.filter(
           donation => donation.status === 'completed'
-        ).length;
+        );
+        
+        const assignedDonations = response.donations.filter(
+          donation => ['assigned', 'scheduled'].includes(donation.status)
+        );
+        
 
-        const assignedCount = response.donations.filter(
-          donation => donation.status === ('assigned')
-        ).length;
+        // const schuduledDonations = response.donations.filter(
+        //   donation => donation.status === 'scheduled'
+        // );
 
-        const schuduledCount = response.donations.filter(
-          donation => donation.status === 'scheduled'
-        ).length;
+        // Sum sizes
+        const sumSizes = (donationList) =>
+          donationList.reduce((total, donation) => total + (donation.size || 0), 0);
 
         setStats({
-          itemsDonated: completedCount || 0,
+          itemsDonated: sumSizes(completedDonations),
           points: user.points || 0,
-          pickups: assignedCount || 0
+          pickups: sumSizes(assignedDonations)
         });
       }
     } catch (error) {
@@ -312,7 +317,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statNumber}>{stats.pickups}</Text>
-                <Text style={styles.statLabel}>Pickups</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
               </View>
             </View>
           </View>

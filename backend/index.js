@@ -379,27 +379,26 @@ app.post('/donations', async (req, res) => {
     if (donationType === 'toys' && (!toyItems || toyItems.length === 0)) {
       return res.status(400).json({ message: 'Toy items are required for toys donation' });
     }
-    
-    // Handle multiple donations
-    const donationsToSave = donationType === 'clothes' ? clothingItems : toyItems;
-    const savedDonations = [];
 
-    for (const item of donationsToSave) {
-      const newDonation = new Donation({
-        userId,
-        donationType,
-        status: 'pending',
-        clothingItems: donationType === 'clothes' ? [item] : [],
-        toyItems: donationType === 'toys' ? [item] : []
-      });
-      await newDonation.save();
-      savedDonations.push(newDonation);
-    }
+    const totalItems = (clothingItems?.length || 0) + (toyItems?.length || 0);
+
+
+    // Create a single donation with all items
+    const newDonation = new Donation({
+      userId,
+      donationType,
+      status: 'pending',
+      clothingItems: donationType === 'clothes' ? clothingItems : [],
+      toyItems: donationType === 'toys' ? toyItems : [],
+      size: totalItems
+    });
+
+    await newDonation.save();
     
     // Return success response
     return res.status(201).json({ 
-      message: 'Donations saved successfully',
-      donations: savedDonations
+      message: 'Donation saved successfully',
+      donation: newDonation
     });
     
   } catch (error) {
@@ -589,7 +588,7 @@ app.delete('/donation/:donationId', async (req, res) => {
 app.post('/schedule-pickup', async (req, res) => {
   console.log('Scheduling pickup for donation:', req.body);
   try {
-    const { donationId, pickupDate, userId } = req.body;
+    const { donationId, pickupDate, userId, location, deliveryMessage } = req.body;
 
     if (!donationId || !pickupDate || !userId) {
       return res.status(400).json({
@@ -641,9 +640,24 @@ app.post('/schedule-pickup', async (req, res) => {
       });
     }
 
-    // Update the donation status and pickup date
+    // Update the donation status, pickup date, address, and notes
     donation.status = 'scheduled';
     donation.pickupDate = new Date(pickupDate);
+    if (location.type === 'gps') {
+      donation.pickupAddress = location.address;
+      if (location.latitude && location.longitude) {
+        donation.location.latitude = location.latitude;
+        donation.location.longitude = location.longitude;
+      } else {
+        console.log('GPS type but no coordinates available');
+      }
+    } else if (location.type === 'manual') {
+      donation.pickupAddress = location.address;
+    }
+    
+    if (deliveryMessage) {
+      donation.pickupNotes = deliveryMessage;
+    }
 
     // Save and check if the update was successful
     await donation.save();

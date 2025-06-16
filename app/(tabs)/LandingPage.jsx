@@ -261,14 +261,14 @@ const DonationScreen = () => {
                             {index === 0 ? '👑' : index === 1 ? '🥈' : '🥉'}
                           </Text>
                         )}
-                      </View>
-                      <View style={styles.userInfo}>
+                  </View>
+                  <View style={styles.userInfo}>
                         <Text style={styles.userName}>{donor.name}</Text>
-                        <View style={styles.pointsContainer}>
-                          <GiftIcon color="#BE3E28" size={14} />
+                    <View style={styles.pointsContainer}>
+                      <GiftIcon color="#BE3E28" size={14} />
                           <Text style={styles.points}>{donor.points} points</Text>
-                        </View>
-                      </View>
+                  </View>
+                </View>
                     </View>
                   ))
                 ) : (
@@ -284,12 +284,12 @@ const DonationScreen = () => {
                 <Text style={styles.statLabel}>Items Donated</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>300</Text>
+                <Text style={styles.statNumber}>10k+</Text>
                 <Text style={styles.statLabel}>Points Earned</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>5</Text>
-                <Text style={styles.statLabel}>Pickups</Text>
+                <Text style={styles.statNumber}>200+</Text>
+                <Text style={styles.statLabel}>In Proggress</Text>
               </View>
             </View>
 
