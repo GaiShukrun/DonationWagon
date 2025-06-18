@@ -37,7 +37,7 @@ type DonationCartProps = {
   userId: string;
 };
 
-const DonationCart = ({ userId }: { userId: string }) => {
+const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean }) => {
   const api = useApi();
   const router = useRouter();
   const [donations, setDonations] = useState<DonationItem[]>([]);
@@ -54,9 +54,12 @@ const DonationCart = ({ userId }: { userId: string }) => {
       
       // Set up a refresh check interval
       const checkRefreshInterval = setInterval(checkForRefresh, 500);
+      // Set up a refresh interval (every 5 seconds)
+      // const refreshInterval = setInterval(fetchDonations, 5000);
       
       // Clean up interval on unmount
       return () => clearInterval(checkRefreshInterval);
+      // return () => clearInterval(refreshInterval);
     }
   }, [userId]);
   
@@ -85,7 +88,14 @@ const DonationCart = ({ userId }: { userId: string }) => {
       
       if (response && response.success && Array.isArray(response.donations)) {
         console.log(`Found ${response.donations.length} donations`);
-        setDonations(response.donations);
+        if (schedule){
+          // Filter for pending donations only
+          const pendingDonations = response.donations.filter(donation => donation.status === 'pending');
+          console.log(`Found ${pendingDonations.length} pending donations`);
+          setDonations(pendingDonations);
+        } else {
+          setDonations(response.donations);
+        }
       } else {
         console.error('Invalid donations response format:', response);
         setDonations([]);
@@ -108,6 +118,10 @@ const DonationCart = ({ userId }: { userId: string }) => {
         return <Clock size={16} color="#F59E0B" />;
       case 'scheduled':
         return <Calendar size={16} color="#3B82F6" />;
+      case 'assigned':
+        return <Package size={16} color="#6366F1" />;
+      case 'picked_up':
+        return <Check size={16} color="#10B981" />;
       case 'completed':
         return <Check size={16} color="#10B981" />;
       case 'cancelled':
@@ -123,6 +137,10 @@ const DonationCart = ({ userId }: { userId: string }) => {
         return 'Pending';
       case 'scheduled':
         return 'Scheduled';
+      case 'assigned':
+        return 'Driver Assigned';
+      case 'picked_up':
+        return 'Picked Up';
       case 'completed':
         return 'Completed';
       case 'cancelled':
@@ -138,6 +156,10 @@ const DonationCart = ({ userId }: { userId: string }) => {
         return '#FEF3C7';
       case 'scheduled':
         return '#DBEAFE';
+      case 'assigned':
+        return '#E0E7FF';
+      case 'picked_up':
+        return '#D1FAE5';
       case 'completed':
         return '#D1FAE5';
       case 'cancelled':
@@ -238,7 +260,8 @@ const DonationCart = ({ userId }: { userId: string }) => {
       <View style={styles.donationItem}>
         <View style={styles.donationHeader}>
           <View style={styles.headerTopRow}>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>            {getStatusIcon(item.status)}
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
+              <View style={{ marginRight: 4 }}>{getStatusIcon(item.status)}</View>
               <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
             </View>
             <TouchableOpacity 
@@ -318,7 +341,9 @@ const DonationCart = ({ userId }: { userId: string }) => {
         </View>
       ) : donations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>You don't have any donations yet.</Text>
+          <Text style={styles.emptyText}>
+            {schedule ? 'No pending donations to be scheduled.' : 'You don\'t have any donations yet.'}
+          </Text>
         </View>
       ) : (
         <FlatList

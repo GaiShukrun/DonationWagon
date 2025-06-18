@@ -26,6 +26,30 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Authentication middleware
+const auth = async (req, res, next) => {
+    try {
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({ message: 'No authentication token, access denied' });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Auth middleware error:', error);
+        res.status(401).json({ message: 'Token is invalid' });
+    }
+};
+
 // Add a simple test endpoint
 app.get('/test', (req, res) => {
     res.json({ message: 'API is working!' });
@@ -35,7 +59,7 @@ app.post('/signup', async (req, res) => {
     console.log('Received signup request:', req.body);
 
     try {
-        const { username, password, firstname, lastname, securityQuestion, securityAnswer } = req.body;
+        const { username, password, firstname, lastname, securityQuestion, securityAnswer, userType } = req.body;
 
         // Validate required fields
         if (!username || !password || !firstname || !lastname || !securityQuestion || !securityAnswer) {
@@ -74,14 +98,15 @@ app.post('/signup', async (req, res) => {
             lastname,
             securityQuestion,
             securityAnswer,
-            points: 0
+            points: 0,
+            userType: userType || 'donor'
         });
 
         await newUser.save();
         
         // Generate JWT token
         const token = jwt.sign(
-            { id: newUser._id, username: newUser.username },
+            { id: newUser._id, username: newUser.username, userType: newUser.userType },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -95,7 +120,8 @@ app.post('/signup', async (req, res) => {
                 username: newUser.username,
                 firstname: newUser.firstname,
                 lastname: newUser.lastname,
-                points: newUser.points
+                points: newUser.points,
+                userType: newUser.userType
             }
         });
         
@@ -139,7 +165,7 @@ app.post('/login', async (req, res) => {
         // Generate JWT token
         console.log('Generating token...');
         const token = jwt.sign(
-            { id: user._id, username: user.username },
+            { id: user._id, username: user.username, userType: user.userType },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -154,7 +180,8 @@ app.post('/login', async (req, res) => {
                 firstname: user.firstname,
                 lastname: user.lastname,
                 points: user.points,
-                profileImage: user.profileImage
+                profileImage: user.profileImage,
+                userType: user.userType
             }
         });
     } catch (error) {
@@ -352,27 +379,26 @@ app.post('/donations', async (req, res) => {
     if (donationType === 'toys' && (!toyItems || toyItems.length === 0)) {
       return res.status(400).json({ message: 'Toy items are required for toys donation' });
     }
-    
-    // Handle multiple donations
-    const donationsToSave = donationType === 'clothes' ? clothingItems : toyItems;
-    const savedDonations = [];
 
-    for (const item of donationsToSave) {
-      const newDonation = new Donation({
-        userId,
-        donationType,
-        status: 'pending',
-        clothingItems: donationType === 'clothes' ? [item] : [],
-        toyItems: donationType === 'toys' ? [item] : []
-      });
-      await newDonation.save();
-      savedDonations.push(newDonation);
-    }
+    const totalItems = (clothingItems?.length || 0) + (toyItems?.length || 0);
+
+
+    // Create a single donation with all items
+    const newDonation = new Donation({
+      userId,
+      donationType,
+      status: 'pending',
+      clothingItems: donationType === 'clothes' ? clothingItems : [],
+      toyItems: donationType === 'toys' ? toyItems : [],
+      size: totalItems
+    });
+
+    await newDonation.save();
     
     // Return success response
     return res.status(201).json({ 
-      message: 'Donations saved successfully',
-      donations: savedDonations
+      message: 'Donation saved successfully',
+      donation: newDonation
     });
     
   } catch (error) {
@@ -560,70 +586,107 @@ app.delete('/donation/:donationId', async (req, res) => {
 
 // Schedule pickup for a donation
 app.post('/schedule-pickup', async (req, res) => {
+  console.log('Scheduling pickup for donation:', req.body);
   try {
-    const { donationId, pickupDate, userId } = req.body;
-    
+    const { donationId, pickupDate, userId, location, deliveryMessage } = req.body;
+
     if (!donationId || !pickupDate || !userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Donation ID, pickup date, and user ID are required' 
+        message: 'Donation ID, pickup date, and user ID are required'
       });
     }
-    
+
     console.log('Scheduling pickup for donation:', donationId);
     console.log('Pickup date:', pickupDate);
-    
+
     // Convert string donationId to MongoDB ObjectId
     const mongoose = require('mongoose');
     let donationObjectId;
-    
+
     try {
       donationObjectId = new mongoose.Types.ObjectId(donationId);
     } catch (err) {
       console.error('Invalid ObjectId format:', err.message);
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Invalid donation ID format' 
+        message: 'Invalid donation ID format'
       });
     }
-    
-    // Find the donation and update its status and pickup date
+
+    // Find the donation
     const donation = await Donation.findById(donationObjectId);
-    
+
     if (!donation) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Donation not found' 
+        message: 'Donation not found'
       });
     }
-    
+
     // Verify that the donation belongs to the user
     if (donation.userId.toString() !== userId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: 'You are not authorized to schedule this donation' 
+        message: 'You are not authorized to schedule this donation'
       });
     }
-    
-    // Update the donation
+
+    // Only allow scheduling if donation is currently 'pending'
+    if (donation.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Donation cannot be scheduled because its status is '${donation.status}'. Only 'pending' donations can be scheduled.`
+      });
+    }
+
+    // Update the donation status, pickup date, address, and notes
     donation.status = 'scheduled';
     donation.pickupDate = new Date(pickupDate);
+    if (location.type === 'gps') {
+      donation.pickupAddress = location.address;
+      if (location.latitude && location.longitude) {
+        donation.location.latitude = location.latitude;
+        donation.location.longitude = location.longitude;
+      } else {
+        console.log('GPS type but no coordinates available');
+      }
+    } else if (location.type === 'manual') {
+      donation.pickupAddress = location.address;
+    }
+    
+    if (deliveryMessage) {
+      donation.pickupNotes = deliveryMessage;
+    }
+
+    // Save and check if the update was successful
     await donation.save();
-    
-    console.log('Pickup scheduled successfully');
-    
-    return res.status(200).json({ 
+
+    // Double-check the update
+    const updatedDonation = await Donation.findById(donationObjectId);
+
+    if (updatedDonation.status !== 'scheduled') {
+      console.error('Failed to update donation status to scheduled');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update donation status'
+      });
+    }
+
+    console.log('Pickup scheduled successfully, status:', updatedDonation.status);
+
+    return res.status(200).json({
       success: true,
       message: 'Pickup scheduled successfully',
-      donation
+      donation: updatedDonation
     });
-    
+
   } catch (error) {
     console.error('Error scheduling pickup:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: 'Server error', 
-      error: error.message 
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -778,10 +841,289 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// Driver specific endpoints
+
+// Update driver location
+app.post('/driver/location', auth, async (req, res) => {
+    try {
+        const { latitude, longitude } = req.body;
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        user.currentLocation = { latitude, longitude };
+        await user.save();
+
+        res.json({ message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('Location update error:', error);
+        res.status(500).json({ message: 'Error updating location', error: error.message });
+    }
+});
+
+// Get available pickups for driver
+app.get('/driver/available-pickups', auth, async (req, res) => {
+    try {
+        const { latitude, longitude } = req.query;
+
+        // Find all donations that are scheduled but not assigned
+        const availablePickups = await Donation.find({
+            status: 'scheduled',
+            assignedDriver: { $exists: false }
+        }).populate('userId', 'firstname lastname');
+
+        // Calculate distance for each pickup if coordinates are provided
+        if (latitude && longitude) {
+            const pickupsWithDistance = availablePickups.map(pickup => {
+                const distance = calculateDistance(
+                    parseFloat(latitude),
+                    parseFloat(longitude),
+                    pickup.location.latitude,
+                    pickup.location.longitude
+                );
+                return {
+                    ...pickup.toObject(),
+                    distance
+                };
+            });
+
+            // Sort by distance
+            pickupsWithDistance.sort((a, b) => a.distance - b.distance);
+            return res.json(pickupsWithDistance);
+        }
+
+        res.json(availablePickups);
+    } catch (error) {
+        console.error('Available pickups error:', error);
+        res.status(500).json({ message: 'Error fetching available pickups', error: error.message });
+    }
+});
+
+// Assign pickup to driver
+app.post('/driver/assign-pickup/:donationId', auth, async (req, res) => {
+    try {
+        const { donationId } = req.params;
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const donation = await Donation.findById(donationId);
+        if (!donation) {
+            return res.status(404).json({ message: 'Donation not found' });
+        }
+
+        if (donation.status !== 'scheduled' || donation.assignedDriver) {
+            return res.status(400).json({ message: 'Donation is not available for pickup' });
+        }
+
+        // Assign donation to driver
+        donation.assignedDriver = user._id;
+        donation.status = 'assigned';
+        donation.assignedAt = new Date();
+        await donation.save();
+
+        // Add to driver's active pickups
+        user.activePickups.push(donationId);
+        await user.save();
+
+        res.json({ message: 'Pickup assigned successfully', donation });
+    } catch (error) {
+        console.error('Assign pickup error:', error);
+        res.status(500).json({ message: 'Error assigning pickup', error: error.message });
+    }
+});
+
+// Mark pickup as completed
+app.post('/driver/complete-pickup/:donationId', auth, async (req, res) => {
+    try {
+        const { donationId } = req.params;
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const donation = await Donation.findById(donationId);
+        if (!donation) {
+            return res.status(404).json({ message: 'Donation not found' });
+        }
+
+        if (donation.assignedDriver.toString() !== user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to complete this pickup' });
+        }
+
+        // Calculate points for donor based on donation type and items
+        let donorPoints = 0;
+        if (donation.donationType === 'clothes') {
+            donorPoints = donation.clothingItems.reduce((total, item) => total + (item.quantity * 10), 0);
+        } else if (donation.donationType === 'toys') {
+            donorPoints = donation.toyItems.reduce((total, item) => total + (item.quantity * 15), 0);
+        }
+
+        // Calculate points for driver (base points + bonus for quick completion)
+        const driverPoints = calculateDriverPoints(donation);
+
+        // Update donation status
+        donation.status = 'completed';
+        donation.pickedUpAt = new Date();
+        await donation.save();
+
+        // Update donor points
+        const donor = await User.findById(donation.userId);
+        if (donor) {
+            donor.points += donorPoints;
+            await donor.save();
+        }
+
+        // Update driver points
+        user.points += driverPoints;
+        await user.save();
+
+        // Remove from driver's active pickups
+        user.activePickups = user.activePickups.filter(id => id.toString() !== donationId);
+        await user.save();
+
+        res.json({ 
+            message: 'Pickup completed successfully', 
+            donation,
+            donorPointsAwarded: donorPoints,
+            driverPointsAwarded: driverPoints
+        });
+    } catch (error) {
+        console.error('Complete pickup error:', error);
+        res.status(500).json({ message: 'Error completing pickup', error: error.message });
+    }
+});
+
+// Helper function to calculate driver points
+function calculateDriverPoints(donation) {
+    // Base points for completing a pickup
+    let points = 20;
+
+    // Bonus points based on number of items
+    const totalItems = donation.donationType === 'clothes' 
+        ? donation.clothingItems.reduce((total, item) => total + item.quantity, 0)
+        : donation.toyItems.reduce((total, item) => total + item.quantity, 0);
+    
+    // Add 5 points per item
+    points += totalItems * 5;
+
+    // Bonus for quick completion (if completed within 24 hours of assignment)
+    if (donation.assignedAt) {
+        const completionTime = new Date();
+        const timeDiff = completionTime - new Date(donation.assignedAt);
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        
+        if (hoursDiff <= 24) {
+            points += 15; // Quick completion bonus
+        }
+    }
+
+    return points;
+}
+
+// Get driver's active pickups
+app.get('/driver/active-pickups', auth, async (req, res) => {
+    try {
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Find all donations assigned to this driver
+        const activePickups = await Donation.find({
+            assignedDriver: user._id,
+            status: 'assigned'
+        }).populate('userId', 'firstname lastname');
+
+        res.json(activePickups);
+    } catch (error) {
+        console.error('Active pickups error:', error);
+        res.status(500).json({ message: 'Error fetching active pickups', error: error.message });
+    }
+});
+
+// Get detailed donation information for popup
+app.get('/driver/donation/:donationId', auth, async (req, res) => {
+    try {
+        const { donationId } = req.params;
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Find the donation with all details
+        const donation = await Donation.findById(donationId)
+            .populate('userId', 'firstname lastname');
+
+        if (!donation) {
+            return res.status(404).json({ message: 'Donation not found' });
+        }
+
+        res.json(donation);
+    } catch (error) {
+        console.error('Get donation details error:', error);
+        res.status(500).json({ message: 'Error fetching donation details', error: error.message });
+    }
+});
+
+// Helper function to calculate distance between two points
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in km
+    return distance;
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI/180);
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
 app.get("/gemini-api-key", (req, res) => {
   res.json({apiKey: process.env.GEMINI_API_KEY});
+});
+
+// Get combined leaderboard
+app.get('/leaderboard', async (req, res) => {
+    try {
+        // Get all users (both donors and drivers)
+        const users = await User.find()
+            .select('firstname lastname points profileImage userType')
+            .sort({ points: -1 })
+            .limit(50);
+
+        res.json({
+            success: true,
+            leaderboard: users.map((user, index) => ({
+                rank: index + 1,
+                name: `${user.firstname} ${user.lastname}`,
+                points: user.points,
+                profileImage: user.profileImage,
+                userType: user.userType // 'donor' or 'driver'
+            }))
+        });
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching leaderboard', 
+            error: error.message 
+        });
+    }
 });

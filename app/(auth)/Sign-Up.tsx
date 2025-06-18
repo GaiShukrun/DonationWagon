@@ -40,6 +40,7 @@ interface FormData {
   lastname: string;
   securityQuestion: string;
   securityAnswer: string;
+  userType: 'donor' | 'driver';
 }
 
 const SignUp = () => {
@@ -52,6 +53,7 @@ const SignUp = () => {
     lastname: '',
     securityQuestion: securityQuestions[0],
     securityAnswer: '',
+    userType: 'donor'
   });
 
   const [errors, setErrors] = useState<Partial<FormData>>({});
@@ -97,6 +99,10 @@ const SignUp = () => {
     if (!formData.securityAnswer.trim()) {
       newErrors.securityAnswer = 'Security answer is required';
     }
+
+    if (!formData.userType) {
+      newErrors.userType = 'Please select a user type' as any;
+    }
    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -110,7 +116,6 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
-      // Call the signUp function from AuthContext with real data
       await signUp({
         username: formData.username,
         password: formData.password,
@@ -118,10 +123,10 @@ const SignUp = () => {
         lastname: formData.lastname,
         securityQuestion: formData.securityQuestion,
         securityAnswer: formData.securityAnswer,
+        userType: formData.userType
       });
       
       setShowSuccessMessage(true);
-      // Router.replace will be handled by the AuthRedirectMessage component
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to create account');
       setShowErrorMessage(true);
@@ -143,9 +148,40 @@ const SignUp = () => {
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to start donating</Text>
+          <Text style={styles.subtitle}>Sign up to start donating or driving</Text>
 
           <View style={styles.inputContainer}>
+            {/* User Type Selection */}
+            <View style={styles.userTypeContainer}>
+              <Text style={styles.sectionTitle}>I want to:</Text>
+              <View style={styles.userTypeButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.userTypeButton,
+                    formData.userType === 'donor' && styles.userTypeButtonActive
+                  ]}
+                  onPress={() => setFormData({ ...formData, userType: 'donor' })}
+                >
+                  <Text style={[
+                    styles.userTypeButtonText,
+                    formData.userType === 'donor' && styles.userTypeButtonTextActive
+                  ]}>Donate Items</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.userTypeButton,
+                    formData.userType === 'driver' && styles.userTypeButtonActive
+                  ]}
+                  onPress={() => setFormData({ ...formData, userType: 'driver' })}
+                >
+                  <Text style={[
+                    styles.userTypeButtonText,
+                    formData.userType === 'driver' && styles.userTypeButtonTextActive
+                  ]}>Pick Up Donations</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TextInput
               style={styles.input}
               placeholder="Username"
@@ -512,6 +548,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#666',
+  },
+  userTypeContainer: {
+    marginBottom: 20,
+  },
+  userTypeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  userTypeButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  userTypeButtonActive: {
+    backgroundColor: '#4A90E2',
+  },
+  userTypeButtonText: {
+    color: '#4A90E2',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  userTypeButtonTextActive: {
+    color: '#fff',
   },
 });
 

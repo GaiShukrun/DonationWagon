@@ -11,7 +11,7 @@ import {
   RefreshControl,
   TextInput,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Calendar, Clock, ChevronLeft, MapPin, Truck } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useApi } from '@/hooks/useApi';
@@ -36,6 +36,7 @@ const ScheduleScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [gpsLoading, setGPSLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -50,11 +51,43 @@ const ScheduleScreen = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
 
+  // Fetch pending donations for the current user
+  const fetchPendingDonations = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await api.get(`/donations/user/${user.id}`);
+      if (response && response.success && Array.isArray(response.donations)) {
+        // Filter for pending donations and get their IDs
+        const pendingDonationIds = response.donations
+          .filter(donation => donation.status === 'pending')
+          .map(donation => donation._id);
+        console.log('response@@@@', pendingDonationIds);
+
+
+          
+
+        
+        setDonationIds(pendingDonationIds);
+        if (pendingDonationIds.length > 0) {
+          fetchDonations(pendingDonationIds);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching pending donations:', error);
+      setAlertTitle('Error');
+      setAlertMessage('Failed to load pending donations. Please try again.');
+      setAlertVisible(true);
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       console.warn('User is not logged in or user object is null');
     } else {
       console.log('User is logged in:', user);
+      // Fetch pending donations when user is available
+      fetchPendingDonations();
     }
   }, [user]);
 
@@ -83,6 +116,7 @@ const ScheduleScreen = () => {
       }
       
       setDonations(fetchedDonations);
+      console.log('fetchedDonations@@@@', donations);
     } catch (error) {
       console.error('Error fetching donations:', error);
       setAlertTitle('Error');
@@ -103,6 +137,7 @@ const ScheduleScreen = () => {
 
   const handleGPSLocation = async () => {
     try {
+      setGPSLoading(true)
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setAlertTitle('Permission Required');
@@ -128,6 +163,8 @@ const ScheduleScreen = () => {
       setAlertTitle('Location Error');
       setAlertMessage('Failed to get current location. Please try again or enter manually.');
       setAlertVisible(true);
+    } finally {
+      setGPSLoading(false)
     }
   };
 
@@ -163,15 +200,27 @@ const ScheduleScreen = () => {
       
       // Schedule pickup for all donations
       const results = [];
-      
+      console.log("@@@@@@",donationIds);
       for (const donationId of donationIds) {
+        console.log('Scheduling pickup for donation:', donationId);
         const response = await api.post('/schedule-pickup', {
           donationId,
           pickupDate: selectedDate.toISOString(),
           userId: user?.id,
-          location: useGPS ? 'GPS Location' : `${location.city}, ${location.street}, ${location.apartment}`,
+          location: useGPS 
+          ? {
+              type: 'gps',
+              address: location.gpsAddress,
+              latitude: location.coordinates?.latitude,
+              longitude: location.coordinates?.longitude
+            }
+          : {
+              type: 'manual',
+              address: `${location.city}, ${location.street}, ${location.apartment}`
+            },
           deliveryMessage,
         });
+        console.log('Response:', response);
         
         results.push({
           donationId,
@@ -182,11 +231,13 @@ const ScheduleScreen = () => {
       
       // Check if all were successful
       const allSuccessful = results.every(result => result.success);
+      console.log('All successful:', allSuccessful);
+      console.log('Results handleSchedulePickup:', results); 
       
       if (allSuccessful) {
         setAlertTitle('Success!');
         setAlertMessage('Your donations have been scheduled for pickup. We will contact you soon to confirm the details.');
-        setAlertCallback(() => () => router.push('/(tabs)/profile'));
+        setAlertCallback(() => () => router.replace('/(tabs)/LandingPage'));
         setAlertVisible(true);
       } else {
         // Some failed
@@ -223,6 +274,14 @@ const ScheduleScreen = () => {
     setRefreshing(false);
   };
 
+  // Add focus effect to fetch donations when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Schedule screen focused, fetching pending donations...');
+      fetchPendingDonations();
+    }, [user])
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -242,6 +301,7 @@ const ScheduleScreen = () => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2D5A27" />
             <Text style={styles.loadingText}>Loading donation details...</Text>
+
           </View>
         ) : (
           <>
@@ -250,7 +310,7 @@ const ScheduleScreen = () => {
               <Text style={styles.sectionTitle}>Donation Summary</Text>
               {user && user.id ? (
                 <View style={styles.donationCartContainer}>
-                  <DonationCart userId={user.id} />
+                  <DonationCart userId={user.id} schedule={true} />
                 </View>
               ) : (
                 <Text style={styles.errorText}>Unable to load user information</Text>
@@ -297,8 +357,15 @@ const ScheduleScreen = () => {
                   <Text style={[styles.buttonText, !useGPS && styles.activeButtonText]}>Enter Manually</Text>
                 </TouchableOpacity>
               </View>
+              {gpsLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#2D5A27" />
+                  <Text style={styles.loadingText}>Loading location...</Text>
 
-              {!useGPS && (
+                </View>
+              ) : (
+
+              !useGPS && (
                 <View style={styles.manualInputContainer}>
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>City <Text style={styles.required}>*</Text></Text>
@@ -329,7 +396,7 @@ const ScheduleScreen = () => {
                     />
                   </View>
                 </View>
-              )}
+              ))}
 
               {useGPS && location.gpsAddress && (
                 <View style={styles.addressDisplay}>

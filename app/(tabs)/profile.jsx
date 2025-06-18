@@ -20,15 +20,21 @@ import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Polygon, Rect, Sto
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DonationCart from '@/components/DonationCart';
+import { useApi } from '@/hooks/useApi';
 
 const windowWidth = Dimensions.get('window').width;
 
 export default function ProfileScreen() {
   const { user, logout, isUserLoggedIn, updateProfileImage } = useAuth();
+  const api = useApi();
   const [profileImage, setProfileImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [stats, setStats] = useState({
+    itemsDonated: 0,
+    points: 0,
+    pickups: 0
+  });
 
   // Trigger refresh of donation cart when screen is focused
   useFocusEffect(
@@ -167,11 +173,51 @@ export default function ProfileScreen() {
     setRefreshing(true);
     
     AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
-
+    fetchUserStats();
     setTimeout(() => {
       setRefreshing(false);
     }, 300);
   };
+
+  // Fetch user's donation stats
+  const fetchUserStats = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await api.get(`/donations/user/${user.id}`);
+      if (response && response.success && Array.isArray(response.donations)) {
+        // Count picked up donations
+        const completedDonations = response.donations.filter(
+          donation => donation.status === 'completed'
+        );
+        
+        const assignedDonations = response.donations.filter(
+          donation => ['assigned', 'scheduled'].includes(donation.status)
+        );
+        
+
+        // const schuduledDonations = response.donations.filter(
+        //   donation => donation.status === 'scheduled'
+        // );
+
+        // Sum sizes
+        const sumSizes = (donationList) =>
+          donationList.reduce((total, donation) => total + (donation.size || 0), 0);
+
+        setStats({
+          itemsDonated: sumSizes(completedDonations),
+          points: user.points || 0,
+          pickups: sumSizes(assignedDonations)
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserStats();
+  }, [user]);
 
   // If not logged in, show a simple message
   if (!isUserLoggedIn || !user) {
@@ -262,16 +308,16 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>Your Donation Stats</Text>
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{user.itemsDonated || '0'}</Text>
-                <Text style={styles.statLabel}>Items    Donated</Text>
+                <Text style={styles.statNumber}>{stats.itemsDonated}</Text>
+                <Text style={styles.statLabel}>Items Donated</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{user.points || '0'}</Text>
+                <Text style={styles.statNumber}>{stats.points}</Text>
                 <Text style={styles.statLabel}>Points Earned</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{user.pickups || '0'}</Text>
-                <Text style={styles.statLabel}>Pickups</Text>
+                <Text style={styles.statNumber}>{stats.pickups}</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
               </View>
             </View>
           </View>

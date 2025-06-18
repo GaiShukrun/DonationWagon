@@ -35,7 +35,7 @@ const donationSchema = new mongoose.Schema({
   status: { 
     type: String, 
     required: true,
-    enum: ['pending', 'scheduled', 'completed', 'cancelled'],
+    enum: ['pending', 'scheduled', 'assigned', 'picked_up', 'completed', 'cancelled'],
     default: 'pending'
   },
   clothingItems: [clothingItemSchema],
@@ -43,6 +43,16 @@ const donationSchema = new mongoose.Schema({
   pickupDate: { type: Date },
   pickupAddress: { type: String },
   pickupNotes: { type: String },
+  location: {
+    latitude: { type: Number },
+    longitude: { type: Number }
+  },
+  assignedDriver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  assignedAt: { type: Date },
+  pickedUpAt: { type: Date },
   createdAt: { 
     type: Date, 
     default: Date.now 
@@ -50,7 +60,8 @@ const donationSchema = new mongoose.Schema({
   updatedAt: { 
     type: Date, 
     default: Date.now 
-  }
+  },
+  size: { type: Number },
 });
 
 // Update the updatedAt field on save

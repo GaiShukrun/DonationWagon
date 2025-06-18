@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from 'expo-router';  
 import { useAuth } from '@/context/AuthContext';
+import useApi from '@/hooks/useApi';
 
 import {
   View,
@@ -13,6 +14,7 @@ import {
   Dimensions,
   StatusBar,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { GiftIcon, BabyIcon, ShirtIcon, LogOutIcon, CalendarIcon, CameraIcon } from 'lucide-react-native';
 
@@ -21,6 +23,9 @@ const windowWidth = Dimensions.get('window').width;
 const DonationScreen = () => {
   const { requireAuth, isUserLoggedIn, logout } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [topDonors, setTopDonors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const api = useApi();
 
   const handleCategoryPress = (category) => {
     if (category === 'Clothing') {
@@ -95,6 +100,24 @@ const DonationScreen = () => {
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await api.get('/leaderboard');
+      if (response.success) {
+        // Get only top 3 donors
+        setTopDonors(response.leaderboard.slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -196,57 +219,61 @@ const DonationScreen = () => {
             <View style={styles.leaderboardContainer}>
               <View style={styles.leaderboardHeader}>
                 <Text style={styles.leaderboardTitle}>Leaderboard</Text>
-                <TouchableOpacity style={styles.viewAllButton}>
+                <TouchableOpacity 
+                  style={styles.viewAllButton}
+                  onPress={() => router.push('/leaderboard')}
+                >
                   <Text style={styles.viewAllText}>View All</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Leaderboard Rankings */}
               <View style={styles.leaderboardList}>
-                {/* First Place */}
-                <View style={[styles.leaderboardItem, styles.firstPlace]}>
-                  <Text style={styles.rankNumber}>1</Text>
-                  <View style={[styles.userAvatar, styles.firstPlaceAvatar]}>
-                    <Text style={styles.avatarText}>👑</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#BE3E28" />
+                ) : topDonors.length > 0 ? (
+                  topDonors.map((donor, index) => (
+                    <View 
+                      key={donor.rank}
+                      style={[
+                        styles.leaderboardItem,
+                        index === 0 && styles.firstPlace,
+                        index === 1 && styles.secondPlace,
+                        index === 2 && styles.thirdPlace
+                      ]}
+                    >
+                      <Text style={styles.rankNumber}>{donor.rank}</Text>
+                      <View 
+                        style={[
+                          styles.userAvatar,
+                          index === 0 && styles.firstPlaceAvatar,
+                          index === 1 && styles.secondPlaceAvatar,
+                          index === 2 && styles.thirdPlaceAvatar
+                        ]}
+                      >
+                        {donor.profileImage ? (
+                          <Image 
+                            source={{ uri: donor.profileImage }} 
+                            style={styles.avatarImage} 
+                          />
+                        ) : (
+                          <Text style={styles.avatarText}>
+                            {index === 0 ? '👑' : index === 1 ? '🥈' : '🥉'}
+                          </Text>
+                        )}
                   </View>
                   <View style={styles.userInfo}>
-                    <Text style={styles.userName}>John Smith</Text>
+                        <Text style={styles.userName}>{donor.name}</Text>
                     <View style={styles.pointsContainer}>
                       <GiftIcon color="#BE3E28" size={14} />
-                      <Text style={styles.points}>2,540 points</Text>
-                    </View>
+                          <Text style={styles.points}>{donor.points} points</Text>
                   </View>
                 </View>
-
-                {/* Second Place */}
-                <View style={[styles.leaderboardItem, styles.secondPlace]}>
-                  <Text style={styles.rankNumber}>2</Text>
-                  <View style={[styles.userAvatar, styles.secondPlaceAvatar]}>
-                    <Text style={styles.avatarText}>🥈</Text>
-                  </View>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>Sarah Jones</Text>
-                    <View style={styles.pointsContainer}>
-                      <GiftIcon color="#BE3E28" size={14} />
-                      <Text style={styles.points}>1,820 points</Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* Third Place */}
-                <View style={[styles.leaderboardItem, styles.thirdPlace]}>
-                  <Text style={styles.rankNumber}>3</Text>
-                  <View style={[styles.userAvatar, styles.thirdPlaceAvatar]}>
-                    <Text style={styles.avatarText}>🥉</Text>
-                  </View>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>Mike Brown</Text>
-                    <View style={styles.pointsContainer}>
-                      <GiftIcon color="#BE3E28" size={14} />
-                      <Text style={styles.points}>1,245 points</Text>
-                    </View>
-                  </View>
-                </View>
+                  ))
+                ) : (
+                  <Text style={styles.noDataText}>No leaderboard data available</Text>
+                )}
               </View>
             </View>
 
@@ -257,12 +284,12 @@ const DonationScreen = () => {
                 <Text style={styles.statLabel}>Items Donated</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>300</Text>
+                <Text style={styles.statNumber}>10k+</Text>
                 <Text style={styles.statLabel}>Points Earned</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>5</Text>
-                <Text style={styles.statLabel}>Pickups</Text>
+                <Text style={styles.statNumber}>200+</Text>
+                <Text style={styles.statLabel}>In Proggress</Text>
               </View>
             </View>
 
@@ -620,6 +647,16 @@ const styles = StyleSheet.create({
   navIcon1: {
     width: 75,
     height: 70,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
   },
 });
 
