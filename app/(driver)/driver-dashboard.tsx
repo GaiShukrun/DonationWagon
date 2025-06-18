@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
 import { api } from '@/lib/api';
 import { MapPin, Package, CheckCircle, AlertCircle } from 'lucide-react-native';
+import DonationDetailsPopup from '@/components/DonationDetailsPopup';
 
 
 interface Pickup {
@@ -53,6 +54,9 @@ export default function DriverDashboard() {
   } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [selectedDonation, setSelectedDonation] = useState<any>(null);
+  const [loadingDonation, setLoadingDonation] = useState(false);
 
 
 
@@ -120,6 +124,22 @@ export default function DriverDashboard() {
     }
   };
 
+  const handlePickupPress = async (pickup: Pickup) => {
+      console.log('pickup:', pickup);
+    try {
+      setLoadingDonation(true);
+      const donation = await api.get(`/driver/donation/${pickup._id}`);
+      console.log('donation:', donation);
+      setSelectedDonation(donation);
+      setShowPopup(true);
+    } catch (error) {
+      console.error('Error fetching donation details:', error);
+      Alert.alert('Error', 'Failed to load donation details');
+    } finally {
+      setLoadingDonation(false);
+    }
+  };
+
   const handleAssignPickup = async (pickupId: string) => {
     try {
       await api.post(`/driver/assign-pickup/${pickupId}`);
@@ -141,65 +161,94 @@ export default function DriverDashboard() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={fetchPickups} />
-      }
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Available Pickups</Text>
-      </View>
-
-      {(isLoading || locationLoading) ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>
-            {locationLoading ? 'Calculating distances...' : 'Loading pickups...'}
-          </Text>
+    <>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={fetchPickups} />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Available Pickups</Text>
         </View>
-      ) : availablePickups.length === 0 ? (
-        <Text style={styles.emptyText}>No available pickups</Text>
-      ) : (
-        availablePickups.map((pickup) => (
-          <View key={pickup._id} style={styles.pickupCard}>
-            <View style={styles.pickupHeader}>
-              <Package size={24} color="#4A90E2" />
-              <Text style={styles.pickupType}>
-                {pickup.donationType.charAt(0).toUpperCase() + pickup.donationType.slice(1)}
-              </Text>
-            </View>
-            <View style={styles.pickupDetails}>
-              <View style={styles.detailRow}>
-                <MapPin size={16} color="#666" />
-                <Text style={styles.detailText}>{pickup.pickupAddress}</Text>
-              </View>
-              <Text style={styles.detailText}>
-                Donor: {pickup.userId.firstname} {pickup.userId.lastname}
-              </Text>
-              <Text style={styles.detailText}>
-                Date: {formatDate(pickup.pickupDate)}
-              </Text>
-              <Text style={styles.detailText}>
-                Distance: {formatDistance(pickup.distance)}
-              </Text>
-              <Text style={styles.detailText}>
-                Size: {pickup.size}
-              </Text>
-              <Text style={styles.detailText}>
-                Note: {pickup.pickupNotes}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.assignButton}
-              onPress={() => handleAssignPickup(pickup._id)}
-            >
-              <Text style={styles.assignButtonText}>Assign to Me</Text>
-            </TouchableOpacity>
+
+        {(isLoading || locationLoading) ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <Text style={styles.loadingText}>
+              {locationLoading ? 'Calculating distances...' : 'Loading pickups...'}
+            </Text>
           </View>
-        ))
+        ) : availablePickups.length === 0 ? (
+          <Text style={styles.emptyText}>No available pickups</Text>
+        ) : (
+          availablePickups.map((pickup) => (
+            <TouchableOpacity
+              key={pickup._id}
+              style={styles.pickupCard}
+              onPress={() => handlePickupPress(pickup)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.pickupHeader}>
+                <Package size={24} color="#4A90E2" />
+                <Text style={styles.pickupType}>
+                  {pickup.donationType.charAt(0).toUpperCase() + pickup.donationType.slice(1)}
+                </Text>
+              </View>
+              <View style={styles.pickupDetails}>
+                <View style={styles.detailRow}>
+                  <MapPin size={16} color="#666" />
+                  <Text style={styles.detailText}>{pickup.pickupAddress}</Text>
+                </View>
+                <Text style={styles.detailText}>
+                  Donor: {pickup.userId.firstname} {pickup.userId.lastname}
+                </Text>
+                <Text style={styles.detailText}>
+                  Date: {formatDate(pickup.pickupDate)}
+                </Text>
+                <Text style={styles.detailText}>
+                  Distance: {formatDistance(pickup.distance)}
+                </Text>
+                <Text style={styles.detailText}>
+                  Size: {pickup.size}
+                </Text>
+                <Text style={styles.detailText}>
+                  Note: {pickup.pickupNotes}
+                </Text>
+              </View>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.assignButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleAssignPickup(pickup._id);
+                  }}
+                >
+                  <Text style={styles.assignButtonText}>Assign to Me</Text>
+                </TouchableOpacity>
+                <Text style={styles.tapHint}>Tap to view details</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+
+      <DonationDetailsPopup
+        visible={showPopup}
+        onClose={() => {
+          setShowPopup(false);
+          setSelectedDonation(null);
+        }}
+        donation={selectedDonation}
+      />
+
+      {loadingDonation && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.loadingText}>Loading donation details...</Text>
+        </View>
       )}
-    </ScrollView>
+    </>
   );
 }
 
@@ -259,6 +308,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 6,
     alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
   },
   assignButtonText: {
     color: '#fff',
@@ -282,5 +333,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  tapHint: {
+    color: '#999',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
   },
 }); 

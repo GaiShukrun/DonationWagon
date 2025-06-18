@@ -1048,6 +1048,31 @@ app.get('/driver/active-pickups', auth, async (req, res) => {
     }
 });
 
+// Get detailed donation information for popup
+app.get('/driver/donation/:donationId', auth, async (req, res) => {
+    try {
+        const { donationId } = req.params;
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Find the donation with all details
+        const donation = await Donation.findById(donationId)
+            .populate('userId', 'firstname lastname');
+
+        if (!donation) {
+            return res.status(404).json({ message: 'Donation not found' });
+        }
+
+        res.json(donation);
+    } catch (error) {
+        console.error('Get donation details error:', error);
+        res.status(500).json({ message: 'Error fetching donation details', error: error.message });
+    }
+});
+
 // Helper function to calculate distance between two points
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Radius of the earth in km
