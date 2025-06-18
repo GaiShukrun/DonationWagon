@@ -37,7 +37,7 @@ type DonationCartProps = {
   userId: string;
 };
 
-const DonationCart = ({ userId }: { userId: string }) => {
+const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean }) => {
   const api = useApi();
   const router = useRouter();
   const [donations, setDonations] = useState<DonationItem[]>([]);
@@ -88,7 +88,14 @@ const DonationCart = ({ userId }: { userId: string }) => {
       
       if (response && response.success && Array.isArray(response.donations)) {
         console.log(`Found ${response.donations.length} donations`);
-        setDonations(response.donations);
+        if (schedule){
+          // Filter for pending donations only
+          const pendingDonations = response.donations.filter(donation => donation.status === 'pending');
+          console.log(`Found ${pendingDonations.length} pending donations`);
+          setDonations(pendingDonations);
+        } else {
+          setDonations(response.donations);
+        }
       } else {
         console.error('Invalid donations response format:', response);
         setDonations([]);
@@ -334,7 +341,9 @@ const DonationCart = ({ userId }: { userId: string }) => {
         </View>
       ) : donations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>You don't have any donations yet.</Text>
+          <Text style={styles.emptyText}>
+            {schedule ? 'No pending donations to be scheduled.' : 'You don\'t have any donations yet.'}
+          </Text>
         </View>
       ) : (
         <FlatList

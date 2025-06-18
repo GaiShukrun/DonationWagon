@@ -36,6 +36,7 @@ const ScheduleScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [gpsLoading, setGPSLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -68,7 +69,7 @@ const ScheduleScreen = () => {
 
         
         setDonationIds(pendingDonationIds);
-        if (pendingDonationIds.length >= 0) {
+        if (pendingDonationIds.length > 0) {
           fetchDonations(pendingDonationIds);
         }
       }
@@ -136,6 +137,7 @@ const ScheduleScreen = () => {
 
   const handleGPSLocation = async () => {
     try {
+      setGPSLoading(true)
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setAlertTitle('Permission Required');
@@ -161,6 +163,8 @@ const ScheduleScreen = () => {
       setAlertTitle('Location Error');
       setAlertMessage('Failed to get current location. Please try again or enter manually.');
       setAlertVisible(true);
+    } finally {
+      setGPSLoading(false)
     }
   };
 
@@ -203,7 +207,17 @@ const ScheduleScreen = () => {
           donationId,
           pickupDate: selectedDate.toISOString(),
           userId: user?.id,
-          location: useGPS ? 'GPS Location' : `${location.city}, ${location.street}, ${location.apartment}`,
+          location: useGPS 
+          ? {
+              type: 'gps',
+              address: location.gpsAddress,
+              latitude: location.coordinates?.latitude,
+              longitude: location.coordinates?.longitude
+            }
+          : {
+              type: 'manual',
+              address: `${location.city}, ${location.street}, ${location.apartment}`
+            },
           deliveryMessage,
         });
         console.log('Response:', response);
@@ -223,7 +237,7 @@ const ScheduleScreen = () => {
       if (allSuccessful) {
         setAlertTitle('Success!');
         setAlertMessage('Your donations have been scheduled for pickup. We will contact you soon to confirm the details.');
-        setAlertCallback(() => () => router.push('/(tabs)/profile'));
+        setAlertCallback(() => () => router.replace('/(tabs)/LandingPage'));
         setAlertVisible(true);
       } else {
         // Some failed
@@ -287,6 +301,7 @@ const ScheduleScreen = () => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2D5A27" />
             <Text style={styles.loadingText}>Loading donation details...</Text>
+
           </View>
         ) : (
           <>
@@ -295,7 +310,7 @@ const ScheduleScreen = () => {
               <Text style={styles.sectionTitle}>Donation Summary</Text>
               {user && user.id ? (
                 <View style={styles.donationCartContainer}>
-                  <DonationCart userId={user.id} />
+                  <DonationCart userId={user.id} schedule={true} />
                 </View>
               ) : (
                 <Text style={styles.errorText}>Unable to load user information</Text>
@@ -342,8 +357,15 @@ const ScheduleScreen = () => {
                   <Text style={[styles.buttonText, !useGPS && styles.activeButtonText]}>Enter Manually</Text>
                 </TouchableOpacity>
               </View>
+              {gpsLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#2D5A27" />
+                  <Text style={styles.loadingText}>Loading location...</Text>
 
-              {!useGPS && (
+                </View>
+              ) : (
+
+              !useGPS && (
                 <View style={styles.manualInputContainer}>
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>City <Text style={styles.required}>*</Text></Text>
@@ -374,7 +396,7 @@ const ScheduleScreen = () => {
                     />
                   </View>
                 </View>
-              )}
+              ))}
 
               {useGPS && location.gpsAddress && (
                 <View style={styles.addressDisplay}>
