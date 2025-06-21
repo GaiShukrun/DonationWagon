@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 import { useApi } from '@/hooks/useApi';
+import { useApiUpload } from '@/hooks/useApiUpload';
 
 // API base URL
 const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }) => {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAuthMessage, setShowAuthMessage] = useState(false);
+  const apiUpload = useApiUpload();
   const [authMessage, setAuthMessage] = useState('');
   const [token, setToken] = useState(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -273,25 +275,64 @@ export const AuthProvider = ({ children }) => {
   // Update profile image in backend and local storage
   const updateProfileImage = async (imageUri) => {
     try {
-      if (!user || !user.id) {
-        throw new Error('User not authenticated');
+      // Make a copy of the current user to prevent state loss
+      const currentUser = { ...user };
+      
+      if (!currentUser || !currentUser.id) {
+        console.error('Cannot update profile image: User not authenticated');
+        return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await api.put('/update-profile-image', {
-        userId: user.id,
-        profileImage: imageUri,
+      console.log('Updating profile image for user:', currentUser.id);
+      
+      // If imageUri is null, clear the profile image
+      if (imageUri === null) {
+        console.log('Clearing profile image...');
+        const response = await api.post('/update-profile-image', {
+          userId: currentUser.id,
+          clearImage: true
+        });
+
+        if (!response) {
+          console.error('Failed to clear profile image:', api.error);
+          return { success: false, error: api.error || 'Failed to clear profile image' };
+        }
+
+        // Update user in state and AsyncStorage only if we have a valid response
+        if (response.user) {
+          const updatedUser = response.user;
+          console.log('Updating user state with:', updatedUser);
+          setUser(updatedUser);
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          return { success: true, user: updatedUser };
+        } else {
+          console.error('Invalid response when clearing profile image:', response);
+          return { success: false, error: 'Invalid server response' };
+        }
+      }
+
+      // Upload the image file
+      console.log('Uploading profile image...');
+      const response = await apiUpload.uploadFile('/update-profile-image', imageUri, {
+        userId: currentUser.id
       });
 
-      if (!response) {
-        throw new Error(api.error || 'Failed to update profile image');
+      if (!response || !response.success) {
+        console.error('Failed to upload profile image:', apiUpload.error);
+        return { success: false, error: apiUpload.error || 'Failed to upload profile image' };
       }
 
-      // Update user in state and AsyncStorage
-      const updatedUser = response.user;
-      setUser(updatedUser);
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-
-      return { success: true, user: updatedUser };
+      // Update user in state and AsyncStorage only if we have a valid response
+      if (response.user) {
+        const updatedUser = response.user;
+        console.log('Updating user state with:', updatedUser);
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        return { success: true, user: updatedUser };
+      } else {
+        console.error('Invalid response when uploading profile image:', response);
+        return { success: false, error: 'Invalid server response' };
+      }
     } catch (error) {
       console.error('Error updating profile image via API:', error);
       return { success: false, error: error.message };
