@@ -5,10 +5,10 @@ import { AuthRedirectMessage } from '@/components/AuthRedirectMessage';
 import { useApi } from '@/hooks/useApi';
 
 // API base URL
-// const API_URL = 'http://10.0.0.20:3000'; // Updated to correct IP address
+const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
 
 // Vlad
-const API_URL = 'http://10.0.0.41:3000';
+// const API_URL = 'http://10.0.0.41:3000';
 
 // Create the Auth Context
 export const AuthContext = createContext({
