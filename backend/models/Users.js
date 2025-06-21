@@ -8,8 +8,7 @@ const userSchema = new mongoose.Schema({
     securityQuestion: {type: String, required: true},
     securityAnswer: {type: String, required: true},
     points: {type: Number, default: 0},
-    profileImage: {type: String, default: null},
-    //    profileImage: {type: mongoose.Schema.Types.ObjectId, ref: 'profileImages'}, // UPDATED
+    profileImage: {type: mongoose.Schema.Types.ObjectId, ref: 'profileImages', default: null},
 
     userType: {type: String, enum: ['donor', 'driver'], default: 'donor'},
     // Driver specific fields
