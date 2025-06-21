@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import styles from './donation-details.styles';
 import {
   View,
   Text,
@@ -33,6 +34,8 @@ import { PanResponder, Animated } from 'react-native';
 const SWIPE_THRESHOLD = 70;
 const SWIPE_DISTANCE = 20;
 const ANIMATION_DURATION = 40;
+
+// Define additional styles directly in the component
 
 export default function DonationDetails() {
   const { isUserLoggedIn, requireAuth, user } = useAuth();
@@ -263,6 +266,10 @@ export default function DonationDetails() {
       aiSelectedCondition: false
     },
   ]);
+  
+  // State for active item tabs
+  const [activeClothingItemId, setActiveClothingItemId] = useState<number>(1);
+  const [activeToyItemId, setActiveToyItemId] = useState<number>(1);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
@@ -594,10 +601,11 @@ export default function DonationDetails() {
   };
 
   const addClothingItem = () => {
+    const newItemId = Date.now();
     setClothingItems([
       ...clothingItems,
       {
-        id: Date.now(),
+        id: newItemId,
         type: '',
         size: '',
         color: '',
@@ -610,6 +618,8 @@ export default function DonationDetails() {
         aiSelectedGender: false
       },
     ]);
+    // Switch to the new item tab
+    setActiveClothingItemId(newItemId);
   };
 
   const removeClothingItem = (id) => {
@@ -619,7 +629,20 @@ export default function DonationDetails() {
       setAlertVisible(true);
       return;
     }
-    setClothingItems(clothingItems.filter((item) => item.id !== id));
+    
+    // Find the index of the item to be removed
+    const itemIndex = clothingItems.findIndex(item => item.id === id);
+    
+    // Create a new array without the removed item
+    const newClothingItems = clothingItems.filter((item) => item.id !== id);
+    setClothingItems(newClothingItems);
+    
+    // If the active item is being removed, switch to another item
+    if (activeClothingItemId === id) {
+      // If removing the first item, select the next one, otherwise select the previous one
+      const newActiveIndex = itemIndex === 0 ? 0 : itemIndex - 1;
+      setActiveClothingItemId(newClothingItems[newActiveIndex].id);
+    }
   };
 
   const updateClothingItem = (id, field, value) => {
@@ -659,10 +682,11 @@ export default function DonationDetails() {
   };
 
   const addToyItem = () => {
+    const newItemId = Date.now();
     setToyItems([
       ...toyItems,
       {
-        id: Date.now(),
+        id: newItemId,
         name: '',
         description: '',
         ageGroup: '',
@@ -675,6 +699,8 @@ export default function DonationDetails() {
         aiSelectedCondition: false
       },
     ]);
+    // Switch to the new item tab
+    setActiveToyItemId(newItemId);
   };
 
   const removeToyItem = (id) => {
@@ -684,7 +710,20 @@ export default function DonationDetails() {
       setAlertVisible(true);
       return;
     }
-    setToyItems(toyItems.filter((item) => item.id !== id));
+    
+    // Find the index of the item to be removed
+    const itemIndex = toyItems.findIndex(item => item.id === id);
+    
+    // Create a new array without the removed item
+    const newToyItems = toyItems.filter((item) => item.id !== id);
+    setToyItems(newToyItems);
+    
+    // If the active item is being removed, switch to another item
+    if (activeToyItemId === id) {
+      // If removing the first item, select the next one, otherwise select the previous one
+      const newActiveIndex = itemIndex === 0 ? 0 : itemIndex - 1;
+      setActiveToyItemId(newToyItems[newActiveIndex].id);
+    }
   };
 
   const updateToyItem = (id, field, value) => {
@@ -993,7 +1032,29 @@ export default function DonationDetails() {
 
   const renderClothesForm = () => (
     <View style={styles.formSection}>
-      {clothingItems.map((item, index) => (
+      {/* Item tabs */}
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {clothingItems.map((item, index) => (
+            <TouchableOpacity 
+              key={item.id} 
+              style={[styles.tabButton, activeClothingItemId === item.id && styles.activeTab]}
+              onPress={() => setActiveClothingItemId(item.id)}
+            >
+              <Text style={styles.tabText}>Item {index + 1}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity 
+            style={styles.tabButton}
+            onPress={addClothingItem}
+          >
+            <Plus size={16} color="#BE3E28" />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+      
+      {/* Display only the active item */}
+      {clothingItems.filter(item => item.id === activeClothingItemId).map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
           <View style={[styles.clothingItemHeader, {justifyContent: 'space-between', alignItems: 'center'}]}>
             {clothingItems.length > 1 ? (
@@ -1004,11 +1065,9 @@ export default function DonationDetails() {
               <View style={{ width: 30, height: 30 }} />
             )}
             <Text style={styles.MainTitle}>Clothes</Text>
-            <TouchableOpacity style={styles.addItemButton} onPress={addClothingItem}>
-              <Plus size={16} color="white" />
-            </TouchableOpacity>
+            <View style={{ width: 30, height: 30 }} />
           </View>
-          <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
+          <Text style={styles.clothingItemTitle}>Item No.{clothingItems.findIndex(i => i.id === item.id) + 1}</Text>
 
           {/* Image upload section for each clothing item */}
           <View style={styles.imageSection}>
@@ -1470,10 +1529,29 @@ export default function DonationDetails() {
 
   const renderToysForm = () => (
     <View style={styles.formSection}>
-             
-                
-
-      {toyItems.map((item, index) => (
+      {/* Item tabs */}
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {toyItems.map((item, index) => (
+            <TouchableOpacity 
+              key={item.id} 
+              style={[styles.tabButton, activeToyItemId === item.id && styles.activeTab]}
+              onPress={() => setActiveToyItemId(item.id)}
+            >
+              <Text style={styles.tabText}>Item {index + 1}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity 
+            style={styles.tabButton}
+            onPress={addToyItem}
+          >
+            <Plus size={16} color="#BE3E28" />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+      
+      {/* Display only the active item */}
+      {toyItems.filter(item => item.id === activeToyItemId).map((item, index) => (
         <View key={item.id} style={styles.clothingItemContainer}>
           <View style={[styles.clothingItemHeader, {justifyContent: 'space-between', alignItems: 'center'}]}>
             {toyItems.length > 1 ? (
@@ -1484,11 +1562,9 @@ export default function DonationDetails() {
               <View style={{ width: 30, height: 30 }} />
             )}
             <Text style={styles.MainTitle}>Toys</Text>
-            <TouchableOpacity style={styles.addItemButton} onPress={addToyItem}>
-              <Plus size={16} color="white" />
-            </TouchableOpacity>
+            <View style={{ width: 30, height: 30 }} />
           </View>
-          <Text style={styles.clothingItemTitle}>Item No.{index + 1}</Text>
+          <Text style={styles.clothingItemTitle}>Item No.{toyItems.findIndex(i => i.id === item.id) + 1}</Text>
 
           {/* Image upload section for each toy item */}
           <View style={styles.imageSection}>
@@ -1559,40 +1635,7 @@ export default function DonationDetails() {
               {detectingNow && (
                 <ActivityIndicator size="small" color="#333" />
               )}
-              
-              {/* AI Predictions for Toys */}
-              {/* {toyAiPredictions && showToyTypeOptions && (
-                <View>
-                  <Text style={styles.label}>AI Suggestions</Text>
-                  <View style={styles.aiPredictionsContainer}>
-                    {toyAiPredictions.map((prediction: {label: string, score: number}) => (
-                      <TouchableOpacity
-                        key={prediction.label}
-                        style={[styles.aiPredictionButton, selectedToyAiType === prediction.label && styles.aiPredictionButtonSelected]}
-                        onPress={() => {
-                          // For toys, we'll use the label directly as the name
-                          setSelectedToyAiType(prediction.label);
-                          // Immediately update the toy name in the form
-                          if (currentItemId) {
-                            setToyItems(prevItems => prevItems.map(item => {
-                              if (item.id === currentItemId) {
-                                return { ...item, name: prediction.label };
-                              }
-                              return item;
-                            }));
-                          }
-                          // Hide the options after selection
-                          setShowToyTypeOptions(false);
-                        }}
-                      >
-                        <Text style={[styles.aiPredictionText, selectedToyAiType === prediction.label && styles.aiPredictionTextSelected]}>
-                          {prediction.label} ({Math.round(prediction.score * 100)}%)
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )} */}
+
             <Text style={styles.label}>Item Name</Text>
             <TextInput
               style={styles.input}
@@ -1812,9 +1855,13 @@ export default function DonationDetails() {
   const onRefresh = () => {
     setRefreshing(true);
     if (activeForm === 'clothing') {
-      setClothingItems([{ id: 1, type: '', size: '', color: '', gender: '', quantity: 1, images: [] as string[], aiSelectedType: false, aiSelectedColor: false, aiSelectedSize: false, aiSelectedGender: false }]);
+      const newItemId = 1;
+      setClothingItems([{ id: newItemId, type: '', size: '', color: '', gender: '', quantity: 1, images: [] as string[], aiSelectedType: false, aiSelectedColor: false, aiSelectedSize: false, aiSelectedGender: false }]);
+      setActiveClothingItemId(newItemId);
     } else {
-      setToyItems([{ id: 1, name: '', description: '', ageGroup: '', condition: '', quantity: 1, images: [] as string[], aiSelectedName: false, aiSelectedDescription: false, aiSelectedAgeGroup: false, aiSelectedCondition: false }]);
+      const newItemId = 1;
+      setToyItems([{ id: newItemId, name: '', description: '', ageGroup: '', condition: '', quantity: 1, images: [] as string[], aiSelectedName: false, aiSelectedDescription: false, aiSelectedAgeGroup: false, aiSelectedCondition: false }]);
+      setActiveToyItemId(newItemId);
     }
     setImages([]);
     setRefreshing(false);
@@ -1899,557 +1946,3 @@ export default function DonationDetails() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCF2E9',
-    
-    // paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: '#BE3E28',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderBottomWidth: 0,
-    borderBottomColor: 'transparent',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  clothesTitle: {
-    color: '#BE3E28',
-    fontSize: 28,
-  },
-  formSection: {
-    padding: 18,
-    marginBottom: 1,
-    backgroundColor: '#FCF2E9',
-    borderRadius: 10,
-    marginHorizontal: 0,
-    marginTop: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    marginBottom: 16,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-  },
-  picker: {
-    height: 60,
-    width: '100%',
-  },
-  helperText: {
-    fontSize: 14,
-    color: '#777',
-    marginBottom: 16,
-  },
-  imagePickerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  imageButton: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 0.48,
-    flexDirection: 'row',
-  },
-  imageButtonText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#333',
-  },
-  imagePreviewContainer: {
-    marginTop: 8,
-    marginBottom: 26,
-  },
-  imagePreviewScroll: {
-    flexDirection: 'row',
-  },
-  imagePreview: {
-    position: 'relative',
-    marginRight: 12,
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 0,
-    right: 30,
-    backgroundColor: '#BE3E28',
-    borderRadius: 12,
-    width: 25,
-    height: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButton: {
-    backgroundColor: '#ef5454',
-    borderRadius: 22,
-    padding: 10,
-    alignItems: 'center',
-    margin: 10,
-    marginTop: 5,
-    marginBottom: 10,
-  },
-  clothesButton: {
-    backgroundColor: '#ef5454',
-  },
-  submitButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  clothingItemContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  clothingItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  clothingItemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  MainTitle: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  removeItemButton: {
-    backgroundColor: '#BE3E28',
-    borderRadius: 20,
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    flexDirection: 'row', 
-    justifyContent: 'center',
-  },
-  addItemButton: {
-    backgroundColor: '#65a765',
-    borderRadius: 20,
-    padding: 2,
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row', 
-    marginTop: 0,
-  },
-  addItemButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  quantityContainer: {
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 8,
-    marginLeft: 16,
-    flex: 0.6,
-  },
-  quantityButton: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityButtonDisabled: {
-    backgroundColor: '#F0F0F0',
-  },
-  quantityText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-  },
-  imageSection: {
-    marginBottom: 16,
-  },
-  imageHelpText: {
-    fontSize: 14,
-    color: '#777',
-    marginBottom: 8,
-  },
-  imageButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 26,
-  },
-  aiButton: {
-    backgroundColor: '#FCF2E9',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    marginBottom: 26,
-    borderWidth: 1,
-    borderColor: '#BE3E28',
-  },
-  aiButtonText: {
-    color: '#BE3E28',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  colorInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 26,
-  },
-  colorInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    flex: 1,
-  },
-  colorPreview: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  aiPredictionsContainer: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    marginBottom: 26,
-  },
-  aiPredictionButton: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 26,
-  },
-  aiPredictionButtonSelected: {
-    backgroundColor: '#E0E0E0',
-  },
-  aiPredictionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  aiPredictionTextSelected: {
-    fontWeight: 'bold',
-  },
-  aiColorsContainer: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    marginBottom: 26,
-  },
-  aiColorsRowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 26,
-  },
-  aiColorCircleButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-  },
-  aiColorCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  aiColorPercentage: {
-    fontSize: 12,
-    color: '#555',
-    textAlign: 'center',
-  },
-  aiColorButton: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  aiColorButtonSelected: {
-    backgroundColor: '#E0E0E0',
-  },
-  aiColorText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
-  },
-  aiColorTextSelected: {
-    fontWeight: 'bold',
-  },
-  applyAiButton: {
-    backgroundColor: '#2D5A27',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 26,
-  },
-  applyAiButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  navIcon1: {
-    width: 20,
-    height: 20,
-  },
-  navIcon: {
-    width: 50,
-    height: 50,
-  },
-  genderRadioContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 26,
-    shadowColor: '#00000050',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  genderTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 26,
-    textAlign: 'center',
-    color: '#555',
-  },
-  genderOptionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 26,
-  },
-  genderRadioOption: {
-    alignItems: 'center',
-    width: '30%',
-  },
-  genderRadioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    zIndex: 1,
-  },
-  genderRadioCircleSelected: {
-    borderColor: '#BE3E28',
-  },
-  genderRadioInnerCircle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#BE3E28',
-  },
-  genderIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#00000030',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  genderLabel: {
-    fontSize: 12,
-    color: '#555',
-    textAlign: 'center',
-  },
-  sizeOptionsRow: {
-    flexDirection: 'row',
-    paddingVertical: 9,
-  },
-  sizeCircle: {
-    width: 35,
-    height: 35,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-    backgroundColor: '#e6f2ff50',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  sizeCircleSelected: {
-    backgroundColor: '#e6f2ff',
-    borderWidth: 1,
-    borderColor: '#4285F4',
-  },
-  sizeCircleText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#555',
-  },
-  sizeCircleTextSelected: {
-    color: '#4285F4',
-    fontWeight: 'bold',
-  },
-  colorContainer: {
-    marginBottom: 9,
-  },
-  colorOptionsRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-  },
-  colorCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 15,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  colorCircleSelected: {
-    borderWidth: 2,
-    borderColor: '#4285F4',
-  },
-  aiColorContainer: {
-    position: 'relative',
-    marginRight: 15,
-  },
-  aiColorBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#4285F4',
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  aiColorBadgeText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  aiButtonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F8FF',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#4285F4',
-  },
-  aiButtonTextContainer: {
-    marginLeft: 10,
-  },
-  aiButtonTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4285F4',
-  },
-  aiButtonDescription: {
-    fontSize: 12,
-    color: '#666',
-  },
-  formContainer: {
-    width: '100%',
-  },
-  swipeIndicatorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-});
