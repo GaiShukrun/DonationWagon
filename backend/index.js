@@ -7,6 +7,11 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const sharp = require('sharp');
+const { getGridFSBucket } = require('./config/gridfs');
+const mongoose = require('mongoose');
+const { Readable } = require('stream');
+const multer = require('multer');
+const upload = multer();
 
 // Connect to MongoDB
 connectDB();
@@ -172,6 +177,11 @@ app.post('/login', async (req, res) => {
         
         // Return user data and token
         console.log('Login successful for:', username);
+        
+        // Create URL for profile image if it exists
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const profileImageUrl = user.profileImage ? `${baseUrl}/profile-image/${user.profileImage}` : null;
+        
         res.json({
             token,
             user: {
@@ -180,7 +190,7 @@ app.post('/login', async (req, res) => {
                 firstname: user.firstname,
                 lastname: user.lastname,
                 points: user.points,
-                profileImage: user.profileImage,
+                profileImage: profileImageUrl,
                 userType: user.userType
             }
         });
@@ -317,42 +327,271 @@ app.get('/test-db', async (req, res) => {
     }
 });
 
-// Update profile image
-app.put('/update-profile-image', async (req, res) => {
+// Update profile image using GridFS
+app.post('/update-profile-image', (req, res, next) => {
+  console.log('==== PROFILE IMAGE UPDATE REQUEST RECEIVED ====');
+  console.log('Request headers:', req.headers);
+  console.log('Content-Type:', req.headers['content-type']);
+  
+  // Continue with multer middleware
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ message: 'File upload error', error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
-    const { userId, profileImage } = req.body;
+    console.log('==== PROFILE IMAGE UPDATE REQUEST ====');
+    console.log('Request body:', req.body);
+    console.log('File received:', req.file ? 'Yes' : 'No');
     
-    if (!userId || profileImage === undefined) {
-      return res.status(400).json({ message: 'User ID and profile image are required' });
+    if (req.file) {
+      console.log('File details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        buffer: req.file.buffer ? 'Buffer present' : 'No buffer'
+      });
     }
     
-    // Find and update the user
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { profileImage },
-      { new: true } // Return updated document
-    );
+    const { userId, clearImage } = req.body;
+    console.log('Update profile image request received');
+    console.log('User ID:', userId);
+    console.log('Clear image flag:', clearImage);
     
-    if (!updatedUser) {
+    // Handle image clearing if explicitly requested
+    if (clearImage === 'true' || clearImage === true) {
+      console.log('Clearing profile image for user:', userId);
+      
+      // Find the user to get the current profile image ID
+      const user = await User.findById(userId);
+      if (!user) {
+        console.log('User not found');
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // If user has a profile image, delete it from GridFS
+      if (user.profileImage) {
+        console.log('Deleting existing profile image from GridFS:', user.profileImage);
+        try {
+          const objectId = new mongoose.Types.ObjectId(user.profileImage);
+          await gfs.delete(objectId);
+          console.log('Existing profile image deleted successfully');
+        } catch (deleteError) {
+          console.error('Error deleting profile image:', deleteError);
+          // Continue even if delete fails
+        }
+      }
+      
+      // Update user to remove profile image reference
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $unset: { profileImage: "" } },
+        { new: true }
+      );
+      
+      console.log('User updated, profile image cleared');
+      return res.status(200).json({ 
+        message: 'Profile image cleared successfully', 
+        user: {
+          id: updatedUser._id,
+          username: updatedUser.username,
+          firstname: updatedUser.firstname,
+          lastname: updatedUser.lastname,
+          points: updatedUser.points,
+          profileImage: null,
+          userType: updatedUser.userType
+        }
+      });
+    }
+    
+    // If no file was uploaded and we're not explicitly clearing, return an error
+    if (!req.file) {
+      console.log('No image file provided and clearImage not set to true');
+      return res.status(400).json({ message: 'Image file is required for upload' });
+    }
+    
+    // Handle uploading a new profile image
+    
+    // If we're clearing the image, we've already handled it above
+    if (clearImage) {
+      return; // The response has already been sent in the clearImage block
+    }
+    
+    console.log('Proceeding with image upload...');
+    
+    // Process image with sharp to optimize it
+    console.log('Processing image with Sharp...');
+    const processedImageBuffer = await sharp(req.file.buffer)
+      // First resize maintaining aspect ratio to cover a 300x300 square
+      .resize(300, 300, { fit: 'cover', position: 'center' })
+      // Then extract the center portion to ensure a perfect square
+      .extract({ left: 0, top: 0, width: 300, height: 300 })
+      // Optimize as JPEG with good quality
+      .jpeg({ quality: 85, progressive: true })
+      .toBuffer();
+    console.log('Image processed. New size:', processedImageBuffer.length, 'bytes');
+    
+    // Get GridFS bucket
+    const bucket = getGridFSBucket();
+    
+    // Create readable stream from buffer
+    console.log('Creating readable stream from buffer...');
+    const readableStream = new Readable();
+    readableStream.push(processedImageBuffer);
+    readableStream.push(null);
+    
+    // Generate unique filename
+    const filename = `profile_${userId}_${Date.now()}`;
+    console.log('Generated filename:', filename);
+    
+    // Check if user already has a profile image and delete it
+    console.log('Finding user to check for existing profile image...');
+    const existingUser = await User.findById(userId);
+    if (existingUser && existingUser.profileImage) {
+      console.log('User has existing profile image with ID:', existingUser.profileImage);
+      try {
+        // We already have a bucket instance from above, reuse it
+        await bucket.delete(existingUser.profileImage);
+        console.log('Deleted previous profile image successfully');
+      } catch (err) {
+        console.log('Error deleting previous image:', err);
+        // Continue even if delete fails
+      }
+    } else {
+      console.log('No existing profile image to delete or user not found');
+    }
+    
+    // Upload new image to GridFS
+    console.log('Opening upload stream...');
+    const uploadStream = bucket.openUploadStream(filename, {
+      contentType: 'image/jpeg',
+      metadata: { userId }
+    });
+    
+    // Create promise to handle stream completion
+    console.log('Setting up upload promise...');
+    
+    // In GridFS, the id is assigned when the stream is created, not when it finishes
+    // So we can get it directly from the uploadStream
+    const uploadId = uploadStream.id;
+    console.log('GridFS assigned file ID:', uploadId);
+    console.log('GridFS bucket:', bucket.s.name);
+    console.log('GridFS upload options:', {
+      contentType: 'image/jpeg',
+      metadata: { userId }
+    });
+    
+    const uploadPromise = new Promise((resolve, reject) => {
+      uploadStream.on('finish', () => {
+        console.log('Upload finished successfully');
+        console.log('Upload stream ID at finish:', uploadStream.id);
+        console.log('Using previously captured ID:', uploadId);
+        // Use the ID we captured earlier
+        resolve(uploadId);
+      });
+      uploadStream.on('error', (err) => {
+        console.error('Upload stream error:', err);
+        console.error('Error details:', err.message);
+        console.error('Error stack:', err.stack);
+        reject(err);
+      });
+    });
+    
+    // Pipe the readable stream to the upload stream
+    console.log('Piping data to upload stream...');
+    console.log('Readable stream:', readableStream ? 'Created successfully' : 'Failed to create');
+    console.log('Upload stream:', uploadStream ? 'Created successfully' : 'Failed to create');
+    console.log('Buffer size:', processedImageBuffer.length, 'bytes');
+    readableStream.pipe(uploadStream);
+    
+    // Wait for upload to complete
+    console.log('Waiting for upload to complete...');
+    let uploadedFileId;
+    try {
+      uploadedFileId = await uploadPromise;
+      console.log('Upload completed successfully. File ID:', uploadedFileId);
+    } catch (uploadError) {
+      console.error('Error during upload promise resolution:', uploadError);
+      console.error('Error message:', uploadError.message);
+      throw uploadError; // Re-throw to be caught by the outer try-catch
+    }
+    
+    // Update user with new profile image ID
+    console.log('Updating user document with new profile image ID...');
+    const updatedUserWithImage = await User.findByIdAndUpdate(
+      userId,
+      { profileImage: uploadedFileId },
+      { new: true }
+    );
+    console.log('User updated successfully. Profile image ID:', updatedUserWithImage.profileImage);
+    console.log('==== PROFILE IMAGE UPLOAD SUCCESSFUL ====');
+    console.log('GridFS file ID:', uploadedFileId);
+    console.log('User ID:', userId);
+    console.log('Image can be accessed at: /profile-image/' + uploadedFileId);
+    
+    if (!updatedUserWithImage) {
+      console.log('User not found');
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Return the updated user without sensitive data
-    return res.status(200).json({ 
-      message: 'Profile image updated successfully', 
+    // Return success response with updated user data
+    console.log('Preparing success response...');
+    const responseData = {
+      message: 'Profile image updated successfully',
       user: {
-        id: updatedUser._id,
-        username: updatedUser.username,
-        firstname: updatedUser.firstname,
-        lastname: updatedUser.lastname,
-        points: updatedUser.points,
-        profileImage: updatedUser.profileImage
+        id: updatedUserWithImage._id,
+        username: updatedUserWithImage.username,
+        firstname: updatedUserWithImage.firstname,
+        lastname: updatedUserWithImage.lastname,
+        points: updatedUserWithImage.points,
+        profileImage: uploadedFileId.toString(),
+        userType: updatedUserWithImage.userType
       }
-    });
+    };
+    console.log('Response data:', responseData);
+    console.log('==== PROFILE IMAGE UPDATE COMPLETED ====');
+    res.status(200).json(responseData);
     
   } catch (error) {
     console.error('Error updating profile image:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get profile image by ID
+app.get('/profile-image/:id', async (req, res) => {
+  try {
+    const imageId = req.params.id;
+    
+    if (!imageId || !mongoose.Types.ObjectId.isValid(imageId)) {
+      return res.status(400).json({ message: 'Valid image ID is required' });
+    }
+    
+    const bucket = getGridFSBucket();
+    
+    // Check if the file exists
+    const file = await mongoose.connection.db.collection('profileImages.files').findOne({
+      _id: new mongoose.Types.ObjectId(imageId)
+    });
+    
+    if (!file) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+    
+    // Set the appropriate headers
+    res.set('Content-Type', file.contentType);
+    res.set('Content-Length', file.length);
+    
+    // Create a download stream and pipe it to the response
+    const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(imageId));
+    downloadStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Error retrieving profile image:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -1108,13 +1347,15 @@ app.get('/leaderboard', async (req, res) => {
             .sort({ points: -1 })
             .limit(50);
 
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        
         res.json({
             success: true,
             leaderboard: users.map((user, index) => ({
                 rank: index + 1,
                 name: `${user.firstname} ${user.lastname}`,
                 points: user.points,
-                profileImage: user.profileImage,
+                profileImage: user.profileImage ? `${baseUrl}/profile-image/${user.profileImage}` : null,
                 userType: user.userType // 'donor' or 'driver'
             }))
         });
