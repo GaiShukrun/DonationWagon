@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   StatusBar,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import Svg, { Path, Circle, G, Rect, Line } from 'react-native-svg';
 import { Picker } from '@react-native-picker/picker';
@@ -46,8 +47,21 @@ export default function DonationDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [showClothingAnalyzer, setShowClothingAnalyzer] = useState(false);
   const [detectingNow, setDetectingNow] = useState(false);
-  const [ai, setAI] = useState(null);
+  const [ai, setAI] = useState<GoogleGenAI | null>(null);
   
+  const [clothingAiPredictions, setClothingAiPredictions] = useState<any[] | null>(null);
+  const [aiColors, setAiColors] = useState<any[] | null>(null);
+  const [selectedClothingAiType, setSelectedClothingAiType] = useState<string | null>(null);
+  const [selectedAiColor, setSelectedAiColor] = useState<string | null>(null);
+  const [toyAiPredictions, setToyAiPredictions] = useState<any[] | null>(null);
+  const [selectedToyAiType, setSelectedToyAiType] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isToyAnalyzing, setIsToyAnalyzing] = useState(false);
+  const [showClothingTypeOptions, setShowClothingTypeOptions] = useState(false);
+  const [showColorOptions, setShowColorOptions] = useState(false);
+  const [showToyTypeOptions, setShowToyTypeOptions] = useState(false);
+  const [currentItemId, setCurrentItemId] = useState<number | null>(null);
+
   useEffect(() => {
     async function loadKey() {
       try {
@@ -64,6 +78,11 @@ export default function DonationDetails() {
   }, []);
 
   async function detectAICloth(imageUri: string, itemId: number) {
+    if (!ai) {
+      console.error("AI instance not initialized");
+      return;
+    }
+    
     setDetectingNow(true);
     
     try {
@@ -146,6 +165,11 @@ export default function DonationDetails() {
   }
 
   async function detectAIToy(imageUri: string, itemId: number) {
+    if (!ai) {
+      console.error("AI instance not initialized");
+      return;
+    }
+    
     setDetectingNow(true);
     
     try {
@@ -249,13 +273,14 @@ export default function DonationDetails() {
     donationType === 'toys' ? 'toys' : 'clothing'
   );
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const screenWidth = Dimensions.get('window').width;
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: (evt, gestureState) => {
-        // Only allow swipe if gesture starts at leftmost or rightmost 5% of the screen
         const { locationX } = evt.nativeEvent;
-        const { width: screenWidth } = require('react-native').Dimensions.get('window');
         if (screenWidth) {
           const edgeThreshold = screenWidth * 0.1;
           if (locationX <= edgeThreshold || locationX >= screenWidth - edgeThreshold) {
@@ -267,38 +292,41 @@ export default function DonationDetails() {
       },
       onPanResponderMove: (_, gestureState) => {
         pan.setValue({ x: gestureState.dx, y: 0 });
+        const opacityValue = 1 - Math.min(Math.abs(gestureState.dx) / screenWidth, 0.5);
+        opacity.setValue(opacityValue);
       },
       onPanResponderRelease: (_, gestureState) => {
-        console.log('SWIPE DEBUG:', {
-          dx: gestureState.dx,
-          dy: gestureState.dy,
-          activeForm,
-        });
+        const { dx, vx } = gestureState;
+        const swipeThreshold = screenWidth * 0.3; // 30% of screen width
+        const velocityThreshold = 0.5;
+        
         let switched = false;
         if (
-          Math.abs(gestureState.dx) > SWIPE_THRESHOLD &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2
+          Math.abs(dx) > swipeThreshold || 
+          Math.abs(vx) > velocityThreshold
         ) {
-          setActiveForm((prevForm) => {
-            if (gestureState.dx > 0 && prevForm === 'clothing') {
-              console.log('Switching to toys');
+          setActiveForm(prevForm => {
+            if ((dx > 0 || vx > velocityThreshold) && prevForm === 'clothing') {
               switched = true;
               return 'toys';
-            } else if (gestureState.dx < 0 && prevForm === 'toys') {
-              console.log('Switching to clothing');
+            } else if ((dx < 0 || vx < -velocityThreshold) && prevForm === 'toys') {
               switched = true;
               return 'clothing';
             }
             return prevForm;
           });
         }
+        
         if (switched) {
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         } else {
-          pan.setValue({ x: 0, y: 0 });
+          Animated.parallel([
+            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
+            Animated.spring(opacity, { toValue: 1, useNativeDriver: true })
+          ]).start();
         }
       },
     })
@@ -306,7 +334,8 @@ export default function DonationDetails() {
 
   const animatedStyle = {
     transform: pan.getTranslateTransform(),
-    flex: 2, // Ensure the animated view takes full space
+    opacity: opacity,
+    flex: 2,
   };
 
   useEffect(() => {
@@ -372,7 +401,7 @@ export default function DonationDetails() {
 
     if (!result.canceled) {
       if (itemId) {
-        if (donationType === 'clothes') {
+        if (activeForm === 'clothing') {
           setClothingItems(clothingItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [result.assets[0].uri] } 
@@ -409,7 +438,7 @@ export default function DonationDetails() {
 
     if (!result.canceled) {
       if (itemId) {
-        if (donationType === 'clothes') {
+        if (activeForm === 'clothing') {
           setClothingItems(clothingItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [result.assets[0].uri] } 
@@ -435,7 +464,7 @@ export default function DonationDetails() {
   };
 
   const removeItemImage = (itemId: number, imageIndex: number) => {
-    if (donationType === 'clothes') {
+    if (activeForm === 'clothing') {
       setClothingItems(clothingItems.map(item => {
         if (item.id === itemId) {
           const newImages = [...item.images];
@@ -463,13 +492,13 @@ export default function DonationDetails() {
 
     try {
       // Validate required fields based on donation type
-      const invalidItems = donationType === 'clothes' 
+      const invalidItems = activeForm === 'clothing' 
         ? clothingItems.filter(item => !item.type || !item.size || !item.gender || item.images.length === 0)
         : toyItems.filter(item => !item.name || !item.description || !item.ageGroup || !item.condition || item.images.length === 0);
       
       if (invalidItems.length > 0) {
         setAlertTitle('Missing Information');
-        setAlertMessage(`Please complete all required fields and add at least one image for each ${donationType} item.`);
+        setAlertMessage(`Please complete all required fields and add at least one image for each ${activeForm} item.`);
         setAlertVisible(true);
         setIsLoading(false);
         return;
@@ -489,8 +518,8 @@ export default function DonationDetails() {
       // Prepare data for API
       const donationData = {
         userId: user.id,
-        donationType,
-        clothingItems: donationType === 'clothes' ? clothingItems.map(item => ({
+        donationType: activeForm,
+        clothingItems: activeForm === 'clothing' ? clothingItems.map(item => ({
           type: item.type,
           size: item.size,
           color: item.color,
@@ -498,7 +527,7 @@ export default function DonationDetails() {
           quantity: item.quantity,
           images: item.images
         })) : [],
-        toyItems: donationType === 'toys' ? toyItems.map(item => ({
+        toyItems: activeForm === 'toys' ? toyItems.map(item => ({
           name: item.name,
           description: item.description,
           ageGroup: item.ageGroup,
@@ -516,7 +545,7 @@ export default function DonationDetails() {
       await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
 
       // Reset donation items after saving
-      if (donationType === 'clothes') {
+      if (activeForm === 'clothing') {
         setClothingItems([
           {
             id: Date.now(),
@@ -551,7 +580,7 @@ export default function DonationDetails() {
       }
 
       setAlertTitle('Success!');
-      setAlertMessage(`Your ${donationType} donation has been saved to your donation cart! You can schedule a pickup later.`);
+      setAlertMessage(`Your ${activeForm} donation has been saved to your donation cart! You can schedule a pickup later.`);
       setAlertCallback(() => () => router.back());
       setAlertVisible(true);
     } catch (error) {
@@ -1702,7 +1731,7 @@ export default function DonationDetails() {
                       item.condition === 'New' && styles.sizeCircleTextSelected
                     ]}>New</Text>
                     {item.condition === 'New' && item.aiSelectedCondition && (
-                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                      <View style={styles.aiColorBadge}>
                         <Text style={styles.aiColorBadgeText}>AI</Text>
                       </View>
                     )}
@@ -1722,7 +1751,7 @@ export default function DonationDetails() {
                       item.condition === 'Like New' && styles.sizeCircleTextSelected
                     ]}>Like New</Text>
                     {item.condition === 'Like New' && item.aiSelectedCondition && (
-                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                      <View style={styles.aiColorBadge}>
                         <Text style={styles.aiColorBadgeText}>AI</Text>
                       </View>
                     )}
@@ -1742,7 +1771,7 @@ export default function DonationDetails() {
                       item.condition === 'Good' && styles.sizeCircleTextSelected
                     ]}>Good</Text>
                     {item.condition === 'Good' && item.aiSelectedCondition && (
-                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                      <View style={styles.aiColorBadge}>
                         <Text style={styles.aiColorBadgeText}>AI</Text>
                       </View>
                     )}
@@ -1762,7 +1791,7 @@ export default function DonationDetails() {
                       item.condition === 'Fair' && styles.sizeCircleTextSelected
                     ]}>Fair</Text>
                     {item.condition === 'Fair' && item.aiSelectedCondition && (
-                      <View style={[styles.aiColorBadge, {position: 'absolute', top: -5, right: -5}]}>
+                      <View style={styles.aiColorBadge}>
                         <Text style={styles.aiColorBadgeText}>AI</Text>
                       </View>
                     )}
@@ -1793,6 +1822,21 @@ export default function DonationDetails() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeForm === 'clothing' && styles.activeTab]}
+          onPress={() => setActiveForm('clothing')}
+        >
+          <Text style={styles.tabText}>Clothes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeForm === 'toys' && styles.activeTab]}
+          onPress={() => setActiveForm('toys')}
+        >
+          <Text style={styles.tabText}>Toys</Text>
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -1821,7 +1865,7 @@ export default function DonationDetails() {
           <TouchableOpacity
             style={[
               styles.submitButton,
-              donationType === 'clothes' ? styles.clothesButton : {},
+              activeForm === 'clothing' ? styles.clothesButton : {},
             ]}
             onPress={handleSubmit}
             disabled={isLoading}
@@ -1850,15 +1894,7 @@ export default function DonationDetails() {
         }}
       />
       
-      {/* Clothing Analyzer - No longer needed since we integrated the AI directly in the form */}
-      {/* {showClothingAnalyzer && currentItemId && (
-        <ClothingAnalyzer
-          visible={showClothingAnalyzer}
-          onResults={handleAIResults}
-          onClose={() => setShowClothingAnalyzer(false)}
-          imageUri={clothingItems.find(item => item.id === currentItemId)?.images[0]}
-        />
-      )} */}
+     
     </SafeAreaView>
   );
 }
@@ -1869,6 +1905,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCF2E9',
     
     // paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#BE3E28',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
   scrollView: {
     flex: 1,
@@ -2390,5 +2445,11 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+  },
+  swipeIndicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
 });
