@@ -50,6 +50,7 @@ export default function DonationDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [showClothingAnalyzer, setShowClothingAnalyzer] = useState(false);
   const [detectingNow, setDetectingNow] = useState(false);
+  const [activeClothingTab, setActiveClothingTab] = useState(0); // 0 for first page, 1 for second page
   const [ai, setAI] = useState<GoogleGenAI | null>(null);
   
   const [clothingAiPredictions, setClothingAiPredictions] = useState<any[] | null>(null);
@@ -79,6 +80,15 @@ export default function DonationDetails() {
 
     loadKey();
   }, []);
+
+  // Helper function to determine which tab a clothing type belongs to
+  const getClothingTypeTab = (clothingType: string): number => {
+    // First tab (Basics) clothing types
+    const firstTabTypes = ['t-shirt', 'shorts', 'pants', 'jeans', 'tank-top', 'dress', 'skirt', 'sweater'];
+    
+    // If the clothing type is in the first tab, return 0, otherwise return 1 (More tab)
+    return firstTabTypes.includes(clothingType) ? 0 : 1;
+  };
 
   async function detectAICloth(imageUri: string, itemId: number) {
     if (!ai) {
@@ -141,24 +151,28 @@ export default function DonationDetails() {
         // Normalize gender to always be lowercase for consistent badge logic
         const normalizedGender = gender.toLowerCase();
         
+        // Determine which tab the detected clothing type belongs to and switch to it
+        const targetTab = getClothingTypeTab(normalizedType);
+        setActiveClothingTab(targetTab);
+        
         setClothingItems(prevItems =>
-  prevItems.map(item =>
-    item.id === itemId
-      ? { 
-          ...item, 
-          type: normalizedType, 
-          color: normalizedColor,
-          size: normalizedSize,
-          gender: normalizedGender,
-          aiSelectedType: true,
-          aiSelectedColor: true,
-          aiSelectedSize: true,
-          aiSelectedGender: true,
-          aiGender: normalizedGender // Store the AI's gender output for badge logic
-        }
-      : item
-  )
-);
+          prevItems.map(item =>
+            item.id === itemId
+              ? { 
+                  ...item, 
+                  type: normalizedType, 
+                  color: normalizedColor,
+                  size: normalizedSize,
+                  gender: normalizedGender,
+                  aiSelectedType: true,
+                  aiSelectedColor: true,
+                  aiSelectedSize: true,
+                  aiSelectedGender: true,
+                  aiGender: normalizedGender // Store the AI's gender output for badge logic
+                }
+              : item
+          )
+        );
       }
     } catch (error) {
       console.error("Error detecting AI:", error);
@@ -1137,8 +1151,27 @@ export default function DonationDetails() {
               <ActivityIndicator size="small" color="#333" />
             )}
             <Text style={styles.label}>Clothing Type</Text>
+            
+            {/* Tab navigation for clothing types */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tabButton, activeClothingTab === 0 && styles.activeTab]}
+                onPress={() => setActiveClothingTab(0)}
+              >
+                <Text style={[styles.tabText, activeClothingTab === 0 && { color: '#BE3E28', fontWeight: '700' }]}>Basics</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabButton, activeClothingTab === 1 && styles.activeTab]}
+                onPress={() => setActiveClothingTab(1)}
+              >
+                <Text style={[styles.tabText, activeClothingTab === 1 && { color: '#BE3E28', fontWeight: '700' }]}>More</Text>
+              </TouchableOpacity>
+            </View>
+            
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
-              {[
+              {/* Split clothing types into two pages */}
+              {(activeClothingTab === 0 ? [
+                // First page - first two rows (8 items)
                 { label: 'T-Shirt', value: 't-shirt', img: require('../../assets/images/polo-shirt.png') },
                 { label: 'Shorts', value: 'shorts', img: require('../../assets/images/shorts.png') },
                 { label: 'Pants', value: 'pants', img: require('../../assets/images/pants.png') },
@@ -1147,13 +1180,14 @@ export default function DonationDetails() {
                 { label: 'Dress', value: 'dress', img: require('../../assets/images/dress.png') },
                 { label: 'Skirt', value: 'skirt', img: require('../../assets/images/skirt.png') },
                 { label: 'Sweater', value: 'sweater', img: require('../../assets/images/sweater.png') },
+              ] : [
+                // Second page - remaining items
                 { label: 'Jacket', value: 'jacket', img: require('../../assets/images/denim-jacket.png') },
                 { label: 'Coat', value: 'coat', img: require('../../assets/images/coat.png') },
                 { label: 'Socks', value: 'socks', img: require('../../assets/images/socks.png') },
-            
                 { label: 'Pajamas', value: 'pajamas', img: require('../../assets/images/pajamas.png') },
                 { label: 'Other', value: 'other', img: require('../../assets/images/clothes.png') },
-              ].map(option => {
+              ]).map(option => {
                 // Determine if this clothing type was set by AI
                 const isAiType = item.type === option.value;
                 return (
