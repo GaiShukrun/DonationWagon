@@ -290,8 +290,8 @@ export default function DonationDetails() {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
 
-  const [activeForm, setActiveForm] = useState<'clothing' | 'toys'>(() =>
-    donationType === 'toys' ? 'toys' : 'clothing'
+  const [activeForm, setActiveForm] = useState<'clothes' | 'toys'>(() =>
+    donationType === 'toys' ? 'toys' : 'clothes'
   );
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -327,12 +327,12 @@ export default function DonationDetails() {
           Math.abs(vx) > velocityThreshold
         ) {
           setActiveForm(prevForm => {
-            if ((dx > 0 || vx > velocityThreshold) && prevForm === 'clothing') {
+            if ((dx > 0 || vx > velocityThreshold) && prevForm === 'clothes') {
               switched = true;
               return 'toys';
             } else if ((dx < 0 || vx < -velocityThreshold) && prevForm === 'toys') {
               switched = true;
-              return 'clothing';
+              return 'clothes';
             }
             return prevForm;
           });
@@ -422,7 +422,7 @@ export default function DonationDetails() {
 
     if (!result.canceled) {
       if (itemId) {
-        if (activeForm === 'clothing') {
+        if (activeForm === 'clothes') {
           setClothingItems(clothingItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [result.assets[0].uri] } 
@@ -459,7 +459,7 @@ export default function DonationDetails() {
 
     if (!result.canceled) {
       if (itemId) {
-        if (activeForm === 'clothing') {
+        if (activeForm === 'clothes') {
           setClothingItems(clothingItems.map(item => 
             item.id === itemId 
               ? { ...item, images: [result.assets[0].uri] } 
@@ -485,7 +485,7 @@ export default function DonationDetails() {
   };
 
   const removeItemImage = (itemId: number, imageIndex: number) => {
-    if (activeForm === 'clothing') {
+    if (activeForm === 'clothes') {
       setClothingItems(clothingItems.map(item => {
         if (item.id === itemId) {
           const newImages = [...item.images];
@@ -513,7 +513,7 @@ export default function DonationDetails() {
 
     try {
       // Validate required fields based on donation type
-      const invalidItems = activeForm === 'clothing' 
+      const invalidItems = activeForm === 'clothes' 
         ? clothingItems.filter(item => !item.type || !item.size || !item.gender || item.images.length === 0)
         : toyItems.filter(item => !item.name || !item.description || !item.ageGroup || !item.condition || item.images.length === 0);
       
@@ -540,7 +540,7 @@ export default function DonationDetails() {
       const donationData = {
         userId: user.id,
         donationType: activeForm,
-        clothingItems: activeForm === 'clothing' ? clothingItems.map(item => ({
+        clothingItems: activeForm === 'clothes' ? clothingItems.map(item => ({
           type: item.type,
           size: item.size,
           color: item.color,
@@ -566,7 +566,7 @@ export default function DonationDetails() {
       await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
 
       // Reset donation items after saving
-      if (activeForm === 'clothing') {
+      if (activeForm === 'clothes') {
         setClothingItems([
           {
             id: Date.now(),
@@ -1888,7 +1888,7 @@ export default function DonationDetails() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    if (activeForm === 'clothing') {
+    if (activeForm === 'clothes') {
       const newItemId = 1;
       setClothingItems([{ id: newItemId, type: '', size: '', color: '', gender: '', quantity: 1, images: [] as string[], aiSelectedType: false, aiSelectedColor: false, aiSelectedSize: false, aiSelectedGender: false }]);
       setActiveClothingItemId(newItemId);
@@ -1905,8 +1905,8 @@ export default function DonationDetails() {
     <SafeAreaView style={styles.container}>
       <View style={styles.tabContainer}>
         <TouchableOpacity 
-          style={[styles.tabButton, activeForm === 'clothing' && styles.activeTab]}
-          onPress={() => setActiveForm('clothing')}
+          style={[styles.tabButton, activeForm === 'clothes' && styles.activeTab]}
+          onPress={() => setActiveForm('clothes')}
         >
           <Text style={styles.tabText}>Clothes</Text>
         </TouchableOpacity>
@@ -1940,13 +1940,13 @@ export default function DonationDetails() {
               ]}
               {...panResponder.panHandlers}
             >
-              {activeForm === 'clothing' ? renderClothesForm() : renderToysForm()}
+              {activeForm === 'clothes' ? renderClothesForm() : renderToysForm()}
             </Animated.View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
-              activeForm === 'clothing' ? styles.clothesButton : {},
+              activeForm === 'clothes' ? styles.clothesButton : {},
             ]}
             onPress={handleSubmit}
             disabled={isLoading}
