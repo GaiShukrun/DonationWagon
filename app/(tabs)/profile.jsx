@@ -30,6 +30,7 @@ export default function ProfileScreen() {
   const [profileImage, setProfileImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isUploadingFromStorage, setIsUploadingFromStorage] = useState(false);
   const [stats, setStats] = useState({
     itemsDonated: 0,
     points: 0,
@@ -57,8 +58,19 @@ export default function ProfileScreen() {
     if (isUserLoggedIn && user) {
       console.log('User object:', user);
       if (user.profileImage) {
-        setProfileImage(user.profileImage);
+        // If profileImage is a GridFS ID, construct the full URL
+        if (typeof user.profileImage === 'string' && user.profileImage.match(/^[0-9a-fA-F]{24}$/)) {
+          // This is a MongoDB ObjectId format, so it's a GridFS reference
+          const imageUrl = `http://10.0.0.10:3000/profile-image/${user.profileImage}`;
+          console.log('Setting profile image URL:', imageUrl);
+          setProfileImage(imageUrl);
+        } else {
+          // It's already a full URL or URI
+          console.log('Setting profile image to existing URL/URI:', user.profileImage);
+          setProfileImage(user.profileImage);
+        }
       } else {
+        console.log('No profile image in user object, falling back to AsyncStorage');
         loadProfileImage(); // Fallback to AsyncStorage if not in user object
       }
     }
@@ -71,9 +83,30 @@ export default function ProfileScreen() {
       
       const savedImage = await AsyncStorage.getItem(`profile_image_${user.id}`);
       if (savedImage) {
-        setProfileImage(savedImage);
-        // Also update in backend if found locally
-        saveProfileImageToBackend(savedImage);
+        console.log('Found saved image in AsyncStorage:', savedImage.substring(0, 30) + '...');
+        // Check if it's a local file URI or a backend URL
+        if (savedImage.startsWith('http')) {
+          // It's already a backend URL, just set it
+          console.log('Using saved backend URL for profile image');
+          setProfileImage(savedImage);
+        } else if (savedImage.startsWith('file://') || savedImage.startsWith('content://')) {
+          // It's a local file URI that needs to be uploaded
+          console.log('Found local file URI in AsyncStorage, will upload it');
+          setProfileImage(savedImage); // Set it temporarily for display
+          
+          // Only upload if we're not already in the process of uploading
+          if (!isUploadingFromStorage) {
+            setIsUploadingFromStorage(true);
+            // Clear the local URI from AsyncStorage to prevent future upload attempts
+            await AsyncStorage.removeItem(`profile_image_${user.id}`);
+            // Upload it to the backend
+            saveProfileImage(savedImage);
+          }
+        } else {
+          // It might be just the GridFS ID
+          const imageUrl = `http://10.0.0.10:3000/profile-image/${savedImage}`;
+          setProfileImage(imageUrl);
+        }
       }
     } catch (error) {
       console.error('Error loading profile image:', error);
@@ -83,60 +116,159 @@ export default function ProfileScreen() {
   // Save profile image to storage and backend
   const saveProfileImage = async (uri) => {
     try {
-      if (!user || !user.id) return;
+      if (!user || !user.id) {
+        console.error('Cannot save profile image: User not logged in');
+        Alert.alert('Error', 'You must be logged in to update your profile image');
+        return;
+      }
       
-      // Save locally as fallback
-      await AsyncStorage.setItem(`profile_image_${user.id}`, uri);
+      console.log('==== SAVE PROFILE IMAGE STARTED ====');
+      console.log('Image URI:', uri);
+      setIsLoading(true);
       
-      // Save to backend
-      await saveProfileImageToBackend(uri);
+      // Save to AsyncStorage first
+      if (uri) {
+        console.log('Saving image URI to AsyncStorage...');
+        await AsyncStorage.setItem(`profile_image_${user.id}`, uri);
+        // Save profile image to backend and update user state
+        await saveProfileImageToBackend(uri);
+      }
+      
+      // Reset the upload flag when done
+      setIsUploadingFromStorage(false);
     } catch (error) {
       console.error('Error saving profile image:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      Alert.alert('Error', 'Failed to save profile image. Please try again.');
     }
   };
   
   // Save image to backend
   const saveProfileImageToBackend = async (uri) => {
     try {
+      console.log('==== SAVE TO BACKEND STARTED ====');
+      console.log('Calling updateProfileImage with URI:', uri);
+      
+      // Check if user is still logged in
+      if (!user || !user.id) {
+        console.error('User not logged in or missing ID');
+        Alert.alert('Sign in Required', 'Please sign in to update your profile image');
+        return { success: false, error: 'User not authenticated' };
+      }
+      
+      // Check file size before uploading
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        console.log('File info:', fileInfo);
+        
+        if (fileInfo.exists && fileInfo.size) {
+          const fileSizeMB = fileInfo.size / (1024 * 1024);
+          console.log('File size:', fileSizeMB.toFixed(2), 'MB');
+          
+          // Warn if file is large but still allow upload attempt
+          if (fileSizeMB > 5) {
+            Alert.alert(
+              'Large Image Warning', 
+              `The selected image is ${fileSizeMB.toFixed(1)}MB which may be too large. For best results, please select an image under 5MB.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Try Anyway', onPress: () => console.log('User chose to try uploading large image anyway') }
+              ]
+            );
+            return { success: false, error: 'Image too large' };
+          }
+        }
+      } catch (fileError) {
+        console.error('Error checking file info:', fileError);
+        // Continue with upload even if file info check fails
+      }
+      
+      setIsLoading(true);
       const result = await updateProfileImage(uri);
+      console.log('updateProfileImage result:', result);
+      
       if (!result.success) {
         console.error('Error updating profile in backend:', result.error);
+        Alert.alert('Upload Failed', result.error || 'Failed to update profile image. Please try again.');
+      } else {
+        console.log('Profile image updated successfully in backend');
+        console.log('Updated user data:', result.user);
+        
+        // If the backend returns a profile image ID, construct the full URL with cache busting
+        if (result.user && result.user.profileImage) {
+          const timestamp = new Date().getTime();
+          const imageUrl = `http://10.0.0.10:3000/profile-image/${result.user.profileImage}?t=${timestamp}`;
+          console.log('Setting profile image with cache busting URL:', imageUrl);
+          setProfileImage(imageUrl);
+          await AsyncStorage.setItem('profileImageUri', imageUrl);
+        }
       }
+      
+      // Always set loading to false here
+      setIsLoading(false);
+      
+      return result;
     } catch (error) {
-      console.error('Error saving to backend:', error);
+      console.error('Error in saveProfileImageToBackend:', error);
+      setIsLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
   // Pick an image from the gallery
   const pickImage = async () => {
     try {
+      console.log('==== PROFILE IMAGE SELECTION STARTED ====');
+      console.log('User ID:', user?.id);
      
       // Request permission
+      console.log('Requesting photo library permission...');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Permission status:', status);
       
       if (status !== 'granted') {
+        console.log('Permission denied');
         Alert.alert('Permission Required', 'Please allow access to your photo library to upload a profile picture.');
         return;
       }
       
-      // Launch image picker
+      // Launch image picker with improved cropping options
+      console.log('Launching image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
+        quality: 0.8,
+        exif: false,
+        base64: false,
+        allowsMultipleSelection: false,
+      });
+      
+      console.log('Image picker result:', {
+        canceled: result.canceled,
+        assets: result.assets ? `${result.assets.length} assets` : 'none'
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0].uri;
+        console.log('Selected image URI:', selectedImage);
         
         // Save image
+        console.log('Setting loading state to true');
         setIsLoading(true);
         
-        // Just store the URI directly
+        // Just store the URI directly for immediate feedback
+        console.log('Setting profile image in state');
         setProfileImage(selectedImage);
+        
+        console.log('Saving profile image to backend...');
         await saveProfileImage(selectedImage);
+        
+        console.log('Image upload process completed');
         setIsLoading(false);
+      } else {
+        console.log('Image selection canceled or no image selected');
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -184,6 +316,7 @@ export default function ProfileScreen() {
     if (!user?.id) return;
     
     try {
+      console.log('Fetching user stats once for user ID:', user.id);
       const response = await api.get(`/donations/user/${user.id}`);
       if (response && response.success && Array.isArray(response.donations)) {
         // Count picked up donations
@@ -215,9 +348,14 @@ export default function ProfileScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchUserStats();
-  }, [user]);
+  // Only fetch stats when component mounts or user ID changes
+useEffect(() => {
+    let isMounted = true;
+    if (isMounted && user?.id) {
+      fetchUserStats();
+    }
+    return () => { isMounted = false; };
+  }, [user?.id]); // Only depend on user.id, not the entire user object
 
   // If not logged in, show a simple message
   if (!isUserLoggedIn || !user) {
@@ -276,7 +414,21 @@ export default function ProfileScreen() {
                 {isLoading ? (
                   <ActivityIndicator size="large" color="#2D5A27" />
                 ) : profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                  <>
+                    <Image 
+                      source={{ uri: profileImage, cache: 'reload' }} 
+                      style={styles.profileImage}
+                      resizeMode="cover"
+                      onLoadStart={() => console.log('Image load started:', profileImage)}
+                      onLoad={() => console.log('Image loaded successfully:', profileImage)}
+                      onError={(e) => {
+                        console.error('Error loading profile image:', e.nativeEvent.error);
+                        console.error('Failed image URL:', profileImage);
+                        // If image fails to load, fall back to default avatar
+                        setProfileImage(null);
+                      }} 
+                    />
+                  </>
                 ) : (
                   <Svg viewBox="0 0 128 128" width="100px" height="100px">
                     <Circle cx="64" cy="64" fill="#ff8475" r="60" />

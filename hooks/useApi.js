@@ -2,9 +2,9 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 
 // Base URL for API requests
-// const API_URL = 'http://10.0.0.20:3000'; // Updated to use your computer's actual IP address
-// Vlad
-const API_URL = 'http://10.0.0.41:3000';
+const API_URL = 'http://10.0.0.10:3000'; // Updated to use your computer's actual IP address
+// // Vlad
+// const API_URL = 'http://10.0.0.41:3000';
 
 /**
  * Custom hook for making API requests with automatic error handling

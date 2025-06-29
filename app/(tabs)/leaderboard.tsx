@@ -10,7 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Trophy, Medal } from 'lucide-react-native';
-import useApi from '@/hooks/useApi';
+import { useApi } from '@/hooks/useApi';
 
 type LeaderboardEntry = {
   rank: number;
@@ -29,7 +29,7 @@ export default function LeaderboardPage() {
   const fetchLeaderboard = async () => {
     try {
       const response = await api.get('/leaderboard');
-      if (response.success) {
+      if (response && response.success) {
         setLeaderboard(response.leaderboard);
       } else {
         setError('Failed to load leaderboard');
@@ -65,6 +65,15 @@ export default function LeaderboardPage() {
     }
   };
 
+  // Helper function to get initials from name
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
   const renderItem = ({ item }: { item: LeaderboardEntry }) => (
     <View style={styles.leaderboardItem}>
       <View style={styles.rankContainer}>
@@ -79,11 +88,16 @@ export default function LeaderboardPage() {
       
       <View style={styles.userInfo}>
         {item.profileImage ? (
-          <Image source={{ uri: item.profileImage }} style={styles.profileImage} />
+          <Image 
+            source={{ uri: item.profileImage }} 
+            style={styles.profileImage} 
+            resizeMode="cover"
+            onError={() => console.log(`Failed to load image for ${item.name}`)}
+          />
         ) : (
-          <View style={styles.profileImagePlaceholder}>
+          <View style={[styles.profileImagePlaceholder]}>
             <Text style={styles.profileImageText}>
-              {item.name.split(' ').map(n => n[0]).join('')}
+              {getInitials(item.name)}
             </Text>
           </View>
         )}
