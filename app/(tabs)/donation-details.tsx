@@ -19,8 +19,8 @@ import {
 import Svg, { Path, Circle, G, Rect, Line } from 'react-native-svg';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import { ArrowLeft, Camera, X, Plus, Minus, Image as ImageIcon, Cpu } from 'lucide-react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, X, Plus, Minus, Cpu, Image as ImageIcon, Camera, Sparkles, Zap } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { CustomAlertMessage } from '@/components/CustomAlertMessage';
@@ -38,6 +38,9 @@ const ANIMATION_DURATION = 40;
 // Define additional styles directly in the component
 
 export default function DonationDetails() {
+  // Create a ref for the main ScrollView to enable programmatic scrolling
+  const scrollViewRef = useRef<ScrollView>(null);
+  
   const { isUserLoggedIn, requireAuth, user } = useAuth();
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -86,8 +89,20 @@ export default function DonationDetails() {
     // First tab (Basics) clothing types
     const firstTabTypes = ['t-shirt', 'shorts', 'pants', 'jeans', 'tank-top', 'dress', 'skirt', 'sweater'];
     
+    // Second tab (More) clothing types - explicitly list them for clarity
+    const secondTabTypes = ['jacket', 'coat', 'socks', 'pajamas', 'other'];
+    
     // If the clothing type is in the first tab, return 0, otherwise return 1 (More tab)
-    return firstTabTypes.includes(clothingType) ? 0 : 1;
+    // Explicitly check for 'other' to ensure it goes to the second tab
+    if (firstTabTypes.includes(clothingType)) {
+      return 0;
+    } else if (secondTabTypes.includes(clothingType) || clothingType === 'other') {
+      return 1;
+    } else {
+      // Default to second tab for any unrecognized types
+      console.log("Unrecognized clothing type:", clothingType, "- defaulting to More tab");
+      return 1;
+    }
   };
 
   async function detectAICloth(imageUri: string, itemId: number) {
@@ -126,6 +141,7 @@ export default function DonationDetails() {
 
       if (aiText && aiText.includes(',')) {
         const [type, color, size, gender] = aiText.split(',').map((part: string) => part.trim());
+        console.log("AI detected type:", type);
         
         // Normalize color to hex format if needed
         const normalizedColor = color.startsWith('#') ? color : `#${color}`;
@@ -133,49 +149,120 @@ export default function DonationDetails() {
         // Map common clothing types to our form options
         const typeMapping: Record<string, string> = {
           't-shirt': 't-shirt',
-          'shirt': 'shirt',
+          'shirt': 't-shirt', // Map 'shirt' to 't-shirt' since we don't have a specific 'shirt' option
           'jeans': 'pants',
           'pants': 'pants',
           'dress': 'dress',
           'jacket': 'jacket',
           'sweater': 'sweater',
           'shorts': 'shorts',
-          'skirt': 'skirt'
+          'skirt': 'skirt',
+          'tank-top': 'tank-top',
+          'coat': 'coat',
+          'socks': 'socks',
+          'pajamas': 'pajamas'
         };
         
-        const normalizedType = typeMapping[type] || type;
+        // If the type is not in our mapping, categorize it as 'other'
+        const normalizedType = typeMapping[type] || 'other';
+        console.log("Normalized type:", normalizedType);
+        
+        // Store the original AI-detected type for badge rendering logic
+        const originalAIType = type;
+        console.log("Original AI type:", originalAIType);
         
         // Normalize size to uppercase (M instead of m)
         const normalizedSize = size.toUpperCase();
         
         // Normalize gender to always be lowercase for consistent badge logic
-        const normalizedGender = gender.toLowerCase();
+        // Map 'men' to 'male' and 'women' to 'female'
+        let normalizedGender = gender.toLowerCase();
+        if (normalizedGender === 'men') normalizedGender = 'male';
+        if (normalizedGender === 'women') normalizedGender = 'female';
         
         // Determine which tab the detected clothing type belongs to and switch to it
         const targetTab = getClothingTypeTab(normalizedType);
+        console.log("Target tab for type:", normalizedType, "is:", targetTab);
         setActiveClothingTab(targetTab);
+        
+        // Update the clothing items with AI-detected values
+        // Find the current item first to ensure we have all required properties
+        const currentItem = clothingItems.find(item => item.id === itemId);
+        if (!currentItem) {
+          console.error("Could not find clothing item with ID:", itemId);
+          return;
+        }
+        
+        // Create updated item with all required properties to satisfy TypeScript
+        const updatedItem = { 
+          ...currentItem,
+          type: normalizedType, 
+          color: normalizedColor,
+          size: normalizedSize,
+          gender: normalizedGender,
+          aiSelectedType: true, // Mark that AI selected this type
+          aiSelectedColor: true,
+          aiSelectedSize: true,
+          aiSelectedGender: true,
+          aiGender: normalizedGender, // Store the AI's gender output for badge logic
+          originalAIType: originalAIType // Store the original AI-detected type for badge rendering
+        };
+        
+        console.log("Updated item with AI detection:", {
+          id: updatedItem.id,
+          type: updatedItem.type,
+          aiSelectedType: updatedItem.aiSelectedType
+        });
         
         setClothingItems(prevItems =>
           prevItems.map(item =>
-            item.id === itemId
-              ? { 
-                  ...item, 
-                  type: normalizedType, 
-                  color: normalizedColor,
-                  size: normalizedSize,
-                  gender: normalizedGender,
-                  aiSelectedType: true,
-                  aiSelectedColor: true,
-                  aiSelectedSize: true,
-                  aiSelectedGender: true,
-                  aiGender: normalizedGender // Store the AI's gender output for badge logic
-                }
-              : item
+            item.id === itemId ? updatedItem : item
           )
         );
+        
+        console.log("Updated clothing items with AI detection");
+        
+        // Scroll to the bottom of the page after AI detection is complete with a very slow, smooth animation
+        setTimeout(() => {
+          if (scrollViewRef.current) {
+           
+            
+            // Create a very slow, multi-step scrolling animation
+            const performVerySlowScroll = () => {
+              // First step - scroll 1/5 of the way
+              setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+                
+                // Second step - scroll 2/5 of the way
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+                  
+                  // Third step - scroll 3/5 of the way
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: 300, animated: true });
+                    
+                    // Fourth step - scroll 4/5 of the way
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+                      
+                      // Final step - complete the scroll
+                      setTimeout(() => {
+                        scrollViewRef.current?.scrollToEnd({ animated: true });
+                        console.log("Very slow, smooth scrolling to bottom complete");
+                      }, 50);
+                    }, 50);
+                  }, 50);
+                }, 50);
+              }, 50);
+            };
+            
+            // Start the very slow scroll sequence
+            performVerySlowScroll();
+          }
+        }, 1000); // Initial delay to ensure state updates are processed
       }
     } catch (error) {
-      console.error("Error detecting AI:", error);
+      console.error("Error detecting clothing:", error);
     } finally {
       setDetectingNow(false);
     }
@@ -636,7 +723,7 @@ export default function DonationDetails() {
     setActiveClothingItemId(newItemId);
   };
 
-  const removeClothingItem = (id) => {
+  const removeClothingItem = (id: number) => {
     if (clothingItems.length === 1) {
       setAlertTitle('Cannot Remove');
       setAlertMessage('You must have at least one clothing item.');
@@ -659,7 +746,7 @@ export default function DonationDetails() {
     }
   };
 
-  const updateClothingItem = (id, field, value) => {
+  const updateClothingItem = (id: number, field: string, value: string) => {
     setClothingItems(
       clothingItems.map((item) =>
         item.id === id
@@ -677,7 +764,7 @@ export default function DonationDetails() {
     );
   };
 
-  const increaseQuantity = (id) => {
+  const increaseQuantity = (id: number) => {
     setClothingItems(
       clothingItems.map((item) =>
         item.id === id ? { ...item, quantity: item.quantity + 1 } : item
@@ -685,7 +772,7 @@ export default function DonationDetails() {
     );
   };
 
-  const decreaseQuantity = (id) => {
+  const decreaseQuantity = (id: number) => {
     setClothingItems(
       clothingItems.map((item) =>
         item.id === id && item.quantity > 1
@@ -717,7 +804,7 @@ export default function DonationDetails() {
     setActiveToyItemId(newItemId);
   };
 
-  const removeToyItem = (id) => {
+  const removeToyItem = (id: number) => {
     if (toyItems.length === 1) {
       setAlertTitle('Cannot Remove');
       setAlertMessage('You must have at least one toy item.');
@@ -740,7 +827,7 @@ export default function DonationDetails() {
     }
   };
 
-  const updateToyItem = (id, field, value) => {
+  const updateToyItem = (id: number, field: string, value: string) => {
     setToyItems(
       toyItems.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
@@ -748,7 +835,7 @@ export default function DonationDetails() {
     );
   };
 
-  const increaseToyQuantity = (id) => {
+  const increaseToyQuantity = (id: number) => {
     setToyItems(
       toyItems.map((item) =>
         item.id === id ? { ...item, quantity: item.quantity + 1 } : item
@@ -756,7 +843,7 @@ export default function DonationDetails() {
     );
   };
 
-  const decreaseToyQuantity = (id) => {
+  const decreaseToyQuantity = (id: number) => {
     setToyItems(
       toyItems.map((item) =>
         item.id === id && item.quantity > 1
@@ -1091,62 +1178,62 @@ export default function DonationDetails() {
             </Text>
 
             {/* Display images for this item */}
-            {item.images.length > 0 && (
-              <View style={styles.imagePreviewContainer}>
-                {item.images.map((imageUri, imageIndex) => (
-                  <View key={imageIndex} style={styles.imagePreview}>
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={styles.previewImage}
-                    />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => removeItemImage(item.id, imageIndex)}
-                    >
-                      <X size={14} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-            <View style={styles.imageButtonsContainer}>
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={() => pickImage(item.id)}
-              >
-                <Image 
-                    source={require('../../assets/images/picture.png')} 
-                    style={styles.navIcon} 
-                  />
-                <Text style={styles.imageButtonText}>Gallery</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={() => takePhoto(item.id)}
-              >
-                <Image 
-                    source={require('../../assets/images/camera.png')} 
-                    style={styles.navIcon} 
-                  />
-                <Text style={styles.imageButtonText}>Camera</Text>
-              </TouchableOpacity>
-              </View>
+            {item.images.length > 0 ? (
+              <>
+                <View style={styles.imagePreviewContainer}>
+                  {item.images.map((imageUri, imageIndex) => (
+                    <View key={imageIndex} style={styles.imagePreview}>
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.previewImage}
+                      />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeItemImage(item.id, imageIndex)}
+                      >
+                        <X size={14} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                
+                <View style={styles.imageButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.aiButtonContainer}
+                    onPress={() => detectAICloth(item.images[0], item.id)}
+                  >
+                    <Sparkles size={20} color="white" />
+                    <Text style={styles.aiButtonTitle}> AI Identify</Text>
+                    <Zap size={16} color="white" style={{ marginLeft: 6 }} />
+                    <View style={styles.aiBadge}>
+                      <Image 
+                        source={require('../../assets/images/ai.png')} 
+                        style={{ width: 18, height: 18 }} 
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ textAlign: 'center', fontSize: 12, color: '#777', marginBottom: 16 }}>Let AI detect clothing type & color automatically</Text>
+              </>
+            ) : (
               <View style={styles.imageButtonsContainer}>
                 <TouchableOpacity
-                  style={styles.aiButtonContainer}
-                  onPress={() => detectAICloth(item.images[0], item.id)}
+                  style={styles.galleryButton}
+                  onPress={() => pickImage(item.id)}
                 >
-                  <Image 
-                    source={require('../../assets/images/ai.png')} 
-                    style={styles.navIcon} 
-                  />
-                  <View style={styles.aiButtonTextContainer}>
-                    <Text style={styles.aiButtonTitle}>AI Identify</Text>
-                    <Text style={styles.aiButtonDescription}>Let AI detect clothing & color</Text>
-                  </View>
+                  <ImageIcon size={24} color="#FFA500" />
+                  <Text style={styles.galleryButtonText}>Gallery</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cameraButton}
+                  onPress={() => takePhoto(item.id)}
+                >
+                  <Camera size={24} color="#4285F4" />
+                  <Text style={styles.cameraButtonText}>Camera</Text>
                 </TouchableOpacity>
               </View>
+            )}
             {detectingNow && (
               <ActivityIndicator size="small" color="#333" />
             )}
@@ -1189,7 +1276,22 @@ export default function DonationDetails() {
                 { label: 'Other', value: 'other', img: require('../../assets/images/clothes.png') },
               ]).map(option => {
                 // Determine if this clothing type was set by AI
-                const isAiType = item.type === option.value;
+                // Enhanced logic to ensure AI badge shows on the correct item
+                // Check if this option is the one that was selected by AI
+                const isAiType = 
+                  // Standard case: this option matches the item's type and was AI-selected
+                  (item.type === option.value && item.aiSelectedType === true) || 
+                  // Special case for t-shirt: show badge if AI detected 'shirt'
+                  // Use optional chaining to avoid TypeScript errors
+                  (option.value === 't-shirt' && item.type === 't-shirt' && item.aiSelectedType === true);
+                
+                // Debug log for all options to understand what's happening
+                console.log(`Rendering ${option.label} option for item ${item.id}:`, {
+                  itemType: item.type,
+                  optionValue: option.value,
+                  aiSelectedType: item.aiSelectedType,
+                  isAiType: isAiType
+                });
                 return (
                   <TouchableOpacity
                     key={option.value}
@@ -1209,12 +1311,13 @@ export default function DonationDetails() {
                       borderRadius: 22,
                       padding: 3,
                       backgroundColor: item.type === option.value ? '#FCF2E9' : '#fff',
-                      position: 'static',
+                      position: 'relative', // Changed from 'static' to 'relative' to fix AI badge visibility
                         
                     }}>
                       <Image source={option.img} style={{ width: 40, height: 40, marginBottom: 2 }} />
-                      {/* AI badge bubble for clothing type */}
-                      {isAiType && item.aiSelectedType && (
+                      {/* AI badge bubble for clothing type - Enhanced to ensure visibility */}
+                      {/* Show badge if this is the currently selected option AND it was set by AI */}
+                      {(item.type === option.value && item.aiSelectedType === true) && (
                         <View style={{
                           position: 'absolute',
                           top: -8,
@@ -1224,6 +1327,11 @@ export default function DonationDetails() {
                           paddingHorizontal: 4,
                           paddingVertical: 2,
                           zIndex: 10,
+                          elevation: 3, // Added for Android
+                          shadowColor: '#000', // Added for iOS
+                          shadowOffset: { width: 0, height: 1 }, // Added for iOS
+                          shadowOpacity: 0.3, // Added for iOS
+                          shadowRadius: 2, // Added for iOS
                         }}>
                           <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>AI</Text>
                         </View>
@@ -1234,7 +1342,7 @@ export default function DonationDetails() {
                 );
               })}
             </View>
-            <Text style={styles.label}>Color 🎨</Text>
+            <Text style={styles.label}>Color</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.colorOptionsRow}>
@@ -1451,31 +1559,15 @@ export default function DonationDetails() {
                 
                   <TouchableOpacity 
                     style={styles.genderRadioOption}
-                    onPress={() => updateClothingItem(item.id, 'gender', 'men')}
+                    onPress={() => updateClothingItem(item.id, 'gender', 'male')}
                   >
-                    <View style={[
-                      styles.genderIconContainer,
-                      { backgroundColor: item.gender === 'men' ? '#e6f2ff' : '#e6f2ff50' }
-                    ]}>
-                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <Path 
-                          fillRule="evenodd" 
-                          clipRule="evenodd" 
-                          d="M14.9415 8.60977C14.6486 8.90266 14.6486 9.37754 14.9415 9.67043C15.2344 9.96332 15.7093 9.96332 16.0022 9.67043L14.9415 8.60977ZM18.9635 6.70907C19.2564 6.41617 19.2564 5.9413 18.9635 5.64841C18.6706 5.35551 18.1958 5.35551 17.9029 5.64841L18.9635 6.70907ZM16.0944 5.41461C15.6802 5.41211 15.3424 5.74586 15.3399 6.16007C15.3374 6.57428 15.6711 6.91208 16.0853 6.91458L16.0944 5.41461ZM18.4287 6.92872C18.8429 6.93122 19.1807 6.59747 19.1832 6.18326C19.1857 5.76906 18.8519 5.43125 18.4377 5.42875L18.4287 6.92872ZM19.1832 6.17421C19.1807 5.76001 18.8429 5.42625 18.4287 5.42875C18.0145 5.43125 17.6807 5.76906 17.6832 6.18326L19.1832 6.17421ZM17.6973 8.52662C17.6998 8.94082 18.0377 9.27458 18.4519 9.27208C18.8661 9.26958 19.1998 8.93177 19.1973 8.51756L17.6973 8.52662ZM16.0022 9.67043L18.9635 6.70907L17.9029 5.64841L14.9415 8.60977L16.0022 9.67043ZM16.0853 6.91458L18.4287 6.92872L18.4377 5.42875L16.0944 5.41461L16.0853 6.91458ZM17.6832 6.18326L17.6973 8.52662L19.1973 8.51756L19.1832 6.17421L17.6832 6.18326Z"
-                          fill="#4285F4"
-                        />
-                        <Path 
-                          d="M15.5631 16.1199C14.871 16.81 13.9885 17.2774 13.0288 17.462C12.0617 17.6492 11.0607 17.5459 10.1523 17.165C8.29113 16.3858 7.07347 14.5723 7.05656 12.5547C7.04683 11.0715 7.70821 9.66348 8.8559 8.72397C10.0036 7.78445 11.5145 7.4142 12.9666 7.71668C13.9237 7.9338 14.7953 8.42902 15.4718 9.14008C16.4206 10.0503 16.9696 11.2996 16.9985 12.6141C17.008 13.9276 16.491 15.1903 15.5631 16.1199Z" 
-                          stroke="#4285F4" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                        />
-                      </Svg>
-                    </View>
-                    <Text style={styles.genderLabel}>{item.gender === 'men' ? 'Men' : 'men'}</Text>
+                    <Image 
+                      source={require('../../assets/images/man.png')} 
+                      style={{ width: 40, height: 40, marginBottom: 8 }} 
+                    />
+                    <Text style={styles.genderLabel}>{item.gender === 'male' ? 'Male' : 'Male'}</Text>
                   </TouchableOpacity>
-                  {item.gender === 'men' && item.aiSelectedGender && item.gender === item.aiGender && (
+                  {item.gender === 'male' && item.aiSelectedGender && item.gender === item.aiGender && (
                     <View style={styles.aiColorBadge}>
                       <Text style={styles.aiColorBadgeText}>AI</Text>
                     </View>
@@ -1486,24 +1578,15 @@ export default function DonationDetails() {
                 
                   <TouchableOpacity 
                     style={styles.genderRadioOption}
-                    onPress={() => updateClothingItem(item.id, 'gender', 'women')}
+                    onPress={() => updateClothingItem(item.id, 'gender', 'female')}
                   >
-                    <View style={[
-                      styles.genderIconContainer,
-                      { backgroundColor: item.gender === 'women' ? '#ffebf0' : '#ffebf050' }
-                    ]}>
-                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <Path 
-                          fillRule="evenodd" 
-                          clipRule="evenodd" 
-                          d="M20 9C20 13.0803 16.9453 16.4471 12.9981 16.9383C12.9994 16.9587 13 16.9793 13 17V19H14C14.5523 19 15 19.4477 15 20C15 20.5523 14.5523 21 14 21H13V22C13 22.5523 12.5523 23 12 23C11.4477 23 11 22.5523 11 22V21H10C9.44772 21 9 20.5523 9 20C9 19.4477 9.44772 19 10 19H11V17C11 16.9793 11.0006 16.9587 11.0019 16.9383C7.05466 16.4471 4 13.0803 4 9C4 4.58172 7.58172 1 12 1C16.4183 1 20 4.58172 20 9ZM6.00365 9C6.00365 12.3117 8.68831 14.9963 12 14.9963C15.3117 14.9963 17.9963 12.3117 17.9963 9C17.9963 5.68831 15.3117 3.00365 12 3.00365C8.68831 3.00365 6.00365 5.68831 6.00365 9Z" 
-                          fill="#FF4081"
-                        />
-                      </Svg>
-                    </View>
-                    <Text style={styles.genderLabel}>{item.gender === 'women' ? 'Women' : 'women'}</Text>
+                    <Image 
+                      source={require('../../assets/images/woman.png')} 
+                      style={{ width: 40, height: 40, marginBottom: 8 }} 
+                    />
+                    <Text style={styles.genderLabel}>{item.gender === 'female' ? 'Female' : 'Female'}</Text>
                   </TouchableOpacity>
-                  {item.gender === 'women' && item.aiSelectedGender && item.gender === item.aiGender && (
+                  {item.gender === 'female' && item.aiSelectedGender && item.gender === item.aiGender && (
                     <View style={styles.aiColorBadge}>
                       <Text style={styles.aiColorBadgeText}>AI</Text>
                     </View>
@@ -1516,35 +1599,11 @@ export default function DonationDetails() {
                     style={styles.genderRadioOption}
                     onPress={() => updateClothingItem(item.id, 'gender', 'unisex')}
                   >
-                    <View style={[
-                      styles.genderIconContainer,
-                      { backgroundColor: item.gender === 'unisex' ? '#f0e6ff' : '#f0e6ff50' }
-                    ]}>
-                      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <Path 
-                          d="M12 10C13.6569 10 15 8.65685 15 7C15 5.34315 13.6569 4 12 4C10.3431 4 9 5.34315 9 7C9 8.65685 10.3431 10 12 10Z" 
-                          stroke="#9C27B0" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                        />
-                        <Path 
-                          d="M12 10V16M9 13H15" 
-                          stroke="#9C27B0" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                        />
-                        <Path 
-                          d="M17.5 20.5L12 16L6.5 20.5" 
-                          stroke="#9C27B0" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                        />
-                      </Svg>
-                    </View>
-                    <Text style={styles.genderLabel}>{item.gender === 'unisex' ? 'unisex' : 'unisex'}</Text>
+                    <Image 
+                      source={require('../../assets/images/bigender.png')} 
+                      style={{ width: 40, height: 40, marginBottom: 8 }} 
+                    />
+                    <Text style={styles.genderLabel}>{item.gender === 'unisex' ? 'Unisex' : 'unisex'}</Text>
                   </TouchableOpacity>
                   {item.gender === 'unisex' && item.aiSelectedGender && item.gender === item.aiGender && (
                     <View style={styles.aiColorBadge}>
@@ -1608,64 +1667,62 @@ export default function DonationDetails() {
             </Text>
 
             {/* Display images for this item */}
-            {item.images.length > 0 && (
-              <View style={styles.imagePreviewContainer}>
-                {item.images.map((imageUri, imageIndex) => (
-                  <View key={imageIndex} style={styles.imagePreview}>
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={styles.previewImage}
-                    />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => removeItemImage(item.id, imageIndex)}
-                    >
-                      <X size={14} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <View style={styles.imageButtonsContainer}>
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={() => pickImage(item.id)}
-              >
-                <Image 
-                    source={require('../../assets/images/picture.png')} 
-                    style={styles.navIcon} 
-                  />
-                <Text style={styles.imageButtonText}>Gallery</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.imageButton}
-                onPress={() => takePhoto(item.id)}
-              >
-                <Image 
-                    source={require('../../assets/images/camera.png')} 
-                    style={styles.navIcon} 
-                  />
-                <Text style={styles.imageButtonText}>Camera</Text>
-              </TouchableOpacity>
-              </View>
-            
+            {item.images.length > 0 ? (
+              <>
+                <View style={styles.imagePreviewContainer}>
+                  {item.images.map((imageUri, imageIndex) => (
+                    <View key={imageIndex} style={styles.imagePreview}>
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.previewImage}
+                      />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeItemImage(item.id, imageIndex)}
+                      >
+                        <X size={14} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                
+                <View style={styles.imageButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.aiButtonContainer}
+                    onPress={() => detectAIToy(item.images[0], item.id)}
+                  >
+                    <Sparkles size={20} color="white" />
+                    <Text style={styles.aiButtonTitle}> AI Identify</Text>
+                    <Zap size={16} color="white" style={{ marginLeft: 6 }} />
+                    <View style={styles.aiBadge}>
+                      <Image 
+                        source={require('../../assets/images/ai.png')} 
+                        style={{ width: 18, height: 18 }} 
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ textAlign: 'center', fontSize: 12, color: '#777', marginBottom: 16 }}>Let AI detect toy type automatically</Text>
+              </>
+            ) : (
               <View style={styles.imageButtonsContainer}>
                 <TouchableOpacity
-                  style={styles.aiButtonContainer}
-                  onPress={() => detectAIToy(item.images[0], item.id)}
+                  style={styles.galleryButton}
+                  onPress={() => pickImage(item.id)}
                 >
-                  <Image 
-                    source={require('../../assets/images/ai.png')} 
-                    style={styles.navIcon} 
-                  />
-                  <View style={styles.aiButtonTextContainer}>
-                    <Text style={styles.aiButtonTitle}>AI Identify</Text>
-                    <Text style={styles.aiButtonDescription}>Let AI detect toy type</Text>
-                  </View>
+                  <ImageIcon size={24} color="#FFA500" />
+                  <Text style={styles.galleryButtonText}>Gallery</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cameraButton}
+                  onPress={() => takePhoto(item.id)}
+                >
+                  <Camera size={24} color="#4285F4" />
+                  <Text style={styles.cameraButtonText}>Camera</Text>
                 </TouchableOpacity>
               </View>
+            )}
               {detectingNow && (
                 <ActivityIndicator size="small" color="#333" />
               )}
@@ -1674,7 +1731,7 @@ export default function DonationDetails() {
             <TextInput
               style={styles.input}
               value={item.name}
-              onChangeText={(value) => updateToyItem(item.id, 'name', value)}
+              onChangeText={(value: string) => updateToyItem(item.id, 'name', value)}
               placeholder="Enter item name"
             />
 
@@ -1682,13 +1739,13 @@ export default function DonationDetails() {
             <TextInput
               style={[styles.input, styles.textArea]}
               value={item.description}
-              onChangeText={(value) => updateToyItem(item.id, 'description', value)}
+              onChangeText={(value: string) => updateToyItem(item.id, 'description', value)}
               placeholder="Enter description"
               multiline
               numberOfLines={4}
             />
 
-            <Text style={styles.label}>Age Group 👶👧👦</Text>
+            <Text style={styles.label}>Age Group</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sizeOptionsRow}>
@@ -1790,7 +1847,7 @@ export default function DonationDetails() {
               </ScrollView>
             </View>
 
-            <Text style={styles.label}>Condition ✨</Text>
+            <Text style={styles.label}>Condition </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10, marginLeft: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.sizeOptionsRow}>
@@ -1923,12 +1980,13 @@ export default function DonationDetails() {
         style={{ flex: 1 }}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {showDonationCart && (
             <DonationCart
-              onDonationTypeSelected={(type) => handleStartNewDonation(type)}
+              onDonationTypeSelected={(type: string) => handleStartNewDonation(type)}
             />
           )}
          
@@ -1941,25 +1999,53 @@ export default function DonationDetails() {
               {...panResponder.panHandlers}
             >
               {activeForm === 'clothes' ? renderClothesForm() : renderToysForm()}
+              
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.submitButton,
+                    activeForm === 'clothes' ? styles.clothesButton : {},
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <View style={{ marginRight: 10 }}>
+                        <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <Path 
+                            d="M21 16.0001V8.00006C20.9996 7.6493 20.9071 7.30483 20.7315 7.00119C20.556 6.69754 20.3037 6.44539 20 6.27006L13 2.27006C12.696 2.09449 12.3511 2.00208 12 2.00208C11.6489 2.00208 11.304 2.09449 11 2.27006L4 6.27006C3.69626 6.44539 3.44398 6.69754 3.26846 7.00119C3.09294 7.30483 3.00036 7.6493 3 8.00006V16.0001C3.00036 16.3508 3.09294 16.6953 3.26846 16.9989C3.44398 17.3026 3.69626 17.5547 4 17.7301L11 21.7301C11.304 21.9056 11.6489 21.998 12 21.998C12.3511 21.998 12.696 21.9056 13 21.7301L20 17.7301C20.3037 17.5547 20.556 17.3026 20.7315 16.9989C20.9071 16.6953 20.9996 16.3508 21 16.0001Z" 
+                            stroke="white" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                          <Path 
+                            d="M3.27002 6.96008L12 12.0101L20.73 6.96008" 
+                            stroke="white" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                          <Path 
+                            d="M12 22.08V12" 
+                            stroke="white" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </Svg>
+                      </View>
+                      <Text style={styles.submitButtonText}>
+                        Save Donation for Pickup
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </Animated.View>
-
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              activeForm === 'clothes' ? styles.clothesButton : {},
-            ]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                Save Donation for Pickup   
-                
-              </Text>
-            )}
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
       
@@ -1979,4 +2065,3 @@ export default function DonationDetails() {
     </SafeAreaView>
   );
 }
-

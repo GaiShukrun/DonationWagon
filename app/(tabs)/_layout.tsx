@@ -68,10 +68,10 @@ export default function TabLayout() {
           onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
         >
           <Image 
-            source={require('../../assets/images/calendar.png')} 
+            source={require('../../assets/images/caravan.png')} 
             style={styles.navIcon} 
           />
-          <Text style={styles.navText}>Schedule</Text>
+          <Text style={styles.navText}>MyWagon</Text>
         </TouchableOpacity>
         
    
@@ -80,7 +80,7 @@ export default function TabLayout() {
           onPress={() => handleNavigation('/')}
         >
           <Image 
-            source={require('../../assets/images/house.png')} 
+            source={require('../../assets/images/plot.png')} 
             style={styles.navIcon} 
           />
           <Text style={styles.navText}>Home</Text>
