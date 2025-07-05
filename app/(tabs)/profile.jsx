@@ -37,17 +37,19 @@ export default function ProfileScreen() {
     pickups: 0
   });
 
-  // Trigger refresh of donation cart when screen is focused
+  // Trigger refresh of donation cart and stats when screen is focused
   useFocusEffect(
     useCallback(() => {
-      const refreshDonationCart = async () => {
+      const refreshData = async () => {
         if (isUserLoggedIn && user && user.id) {
-          console.log('Profile screen focused, refreshing donation cart...');
+          console.log('Profile screen focused, refreshing donation cart and stats...');
           await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
+          // Also refresh user stats to update "In Progress" count
+          fetchUserStats();
         }
       };
       
-      refreshDonationCart();
+      refreshData();
       
       return () => {}; // Cleanup function
     }, [isUserLoggedIn, user])
