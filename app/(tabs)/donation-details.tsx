@@ -55,7 +55,16 @@ export default function DonationDetails() {
   const [detectingNow, setDetectingNow] = useState(false);
   const [activeClothingTab, setActiveClothingTab] = useState(0); // 0 for first page, 1 for second page
   const [ai, setAI] = useState<GoogleGenAI | null>(null);
-  
+
+  // Set the active form and initialize donation based on the donationType parameter
+  useEffect(() => {
+    if (donationType) {
+      const formType = donationType === 'toys' ? 'toys' : 'clothes' as 'clothes' | 'toys';
+      setActiveForm(formType);
+      handleStartNewDonation(formType);
+    }
+  }, [donationType]);
+
   const [clothingAiPredictions, setClothingAiPredictions] = useState<any[] | null>(null);
   const [aiColors, setAiColors] = useState<any[] | null>(null);
   const [selectedClothingAiType, setSelectedClothingAiType] = useState<string | null>(null);
@@ -375,7 +384,6 @@ export default function DonationDetails() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
 
   const [activeForm, setActiveForm] = useState<'clothes' | 'toys'>(() =>
     donationType === 'toys' ? 'toys' : 'clothes'
@@ -654,9 +662,10 @@ export default function DonationDetails() {
 
       // Reset donation items after saving
       if (activeForm === 'clothes') {
+        const newItemId = Date.now();
         setClothingItems([
           {
-            id: Date.now(),
+            id: newItemId,
             type: '',
             size: '',
             color: '',
@@ -669,6 +678,10 @@ export default function DonationDetails() {
             aiSelectedGender: false
           },
         ]);
+        // Update the active clothing item ID to match the new item
+        setActiveClothingItemId(newItemId);
+        // Reset active clothing tab to first tab (0)
+        setActiveClothingTab(0);
       } else {
         setToyItems([
           {
@@ -689,8 +702,8 @@ export default function DonationDetails() {
 
       setAlertTitle('Success!');
       setAlertMessage(`Your ${activeForm} donation has been saved to your donation cart! You can schedule a pickup later.`);
-      setAlertCallback(() => () => router.back());
       setAlertVisible(true);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error saving donation:', error);
       setAlertTitle('Error');
@@ -2057,7 +2070,9 @@ export default function DonationDetails() {
         onClose={() => setAlertVisible(false)}
         onConfirm={() => {
           setAlertVisible(false);
-          if (alertCallback) alertCallback();
+          if (alertTitle.includes("Success")) {
+            router.replace("/");
+          }
         }}
       />
       

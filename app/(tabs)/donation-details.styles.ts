@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       margin: 10,
       marginTop: 5,
-      marginBottom: 10,
+      marginBottom: 15,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
