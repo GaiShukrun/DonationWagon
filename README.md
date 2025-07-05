@@ -1,6 +1,8 @@
-# DONATIONWAGON
+<div align="center">
+<h1>DONATION WAGON</h1>
 
-*Empowering Giving, Transforming Communities Together*
+Empowering Giving, Transforming Communities Together
+</div>
 
 <div align="center">
 
@@ -9,6 +11,7 @@
 [![languages](https://img.shields.io/badge/languages-3-blue)]()
 
 </div>
+
 
 ## Built with the tools and technologies:
 
@@ -44,8 +47,8 @@ Donation Wagon connects donors with those in need through an intuitive mobile pl
 
 ## Core Features
 
-### 🎁 Donation Management
-- **AI-Powered Item Recognition**: Leverages advanced AI for rapid and accurate identification of item details, making the donation process smoother and faster by automatically detecting clothing types, colors, sizes, and genders from uploaded images
+###  Donation Management
+- **🤖AI-Powered Item Recognition**: Leverages advanced AI for rapid and accurate identification of item details, making the donation process smoother and faster by automatically detecting clothing types, colors, sizes, and genders from uploaded images
 - **Multi-Item Donations**: Support for adding multiple clothing or toy items in a single donation
 - **Rich Media Support**: Upload and manage multiple images per donation item
 - **Smooth UX**: Animated scrolling and intuitive form navigation
