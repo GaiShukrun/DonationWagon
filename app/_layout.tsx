@@ -2,11 +2,11 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { View, LogBox } from 'react-native';
+import { View, LogBox, StatusBar } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TopBar from '@/components/TopBar';
@@ -22,10 +22,21 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  
+  // Force hide status bar completely at app startup
+  useEffect(() => {
+    StatusBar.setHidden(true, 'none');
+    StatusBar.setTranslucent(true);
+    StatusBar.setBackgroundColor('transparent');
+  }, []);
 
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      // Hide status bar globally with multiple methods to ensure it works
+      StatusBar.setHidden(true, 'none');
+      StatusBar.setTranslucent(true);
+      StatusBar.setBackgroundColor('transparent');
     }
   }, [loaded]);
 
@@ -63,14 +74,18 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, backgroundColor: 'black'}}>
-            <StatusBar backgroundColor="black" style="light" />
+          <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? 'black' : '#FAF3F0', padding: 0 }}>
             <TopBar />
             <Stack 
               screenOptions={{
                 headerShown: false,
                 navigationBarHidden: true,
-                contentStyle: { backgroundColor: '#FAF3F0' }
+                contentStyle: { backgroundColor: '#FAF3F0' },
+                statusBarHidden: true,
+                statusBarStyle: 'light',
+                statusBarTranslucent: true,
+                statusBarAnimation: 'none',
+                presentation: 'transparentModal',
               }}
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />
