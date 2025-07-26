@@ -63,7 +63,7 @@ export default function ProfileScreen() {
         // If profileImage is a GridFS ID, construct the full URL
         if (typeof user.profileImage === 'string' && user.profileImage.match(/^[0-9a-fA-F]{24}$/)) {
           // This is a MongoDB ObjectId format, so it's a GridFS reference
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${user.profileImage}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${user.profileImage}`;
           console.log('Setting profile image URL:', imageUrl);
           setProfileImage(imageUrl);
         } else {
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
           }
         } else {
           // It might be just the GridFS ID
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${savedImage}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${savedImage}`;
           setProfileImage(imageUrl);
         }
       }
@@ -200,7 +200,7 @@ export default function ProfileScreen() {
         // If the backend returns a profile image ID, construct the full URL with cache busting
         if (result.user && result.user.profileImage) {
           const timestamp = new Date().getTime();
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${result.user.profileImage}?t=${timestamp}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${result.user.profileImage}?t=${timestamp}`;
           console.log('Setting profile image with cache busting URL:', imageUrl);
           setProfileImage(imageUrl);
           await AsyncStorage.setItem('profileImageUri', imageUrl);

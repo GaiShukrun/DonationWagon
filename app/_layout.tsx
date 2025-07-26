@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { Platform } from 'react-native';
+import { Platform, I18nManager } from 'react-native';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -11,8 +11,10 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TopBar from '@/components/TopBar';
 
-// Disable yellow box warnings
-LogBox.ignoreAllLogs();
+// Suppress only the useInsertionEffect warning globally
+LogBox.ignoreLogs([
+  'Warning: useInsertionEffect must not schedule updates.'
+]);
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -23,8 +25,12 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   
-  // Force hide status bar completely at app startup
+  // Force hide status bar completely at app startup and enforce LTR layout
   useEffect(() => {
+    // Force Left-to-Right layout direction to prevent mirroring in APK builds
+    I18nManager.allowRTL(false);
+    I18nManager.forceRTL(false);
+    
     StatusBar.setHidden(true, 'none');
     StatusBar.setTranslucent(true);
     StatusBar.setBackgroundColor('#00000000');
@@ -74,7 +80,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? 'black' : '#FAF3F0', padding: 0 }}>
+          <View style={{ flex: 1, direction: 'ltr', backgroundColor: colorScheme === 'dark' ? 'black' : '#FAF3F0', padding: 0 }}>
             <TopBar />
             <Stack 
               screenOptions={{

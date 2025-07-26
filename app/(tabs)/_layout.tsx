@@ -50,7 +50,6 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' }, // Completely hide the tab bar
         }}>
         <Tabs.Screen name="index" />
-        <Tabs.Screen name="donate" />
         <Tabs.Screen name="donate-tab" />
         <Tabs.Screen name="schedule" />
         <Tabs.Screen name="profile" />

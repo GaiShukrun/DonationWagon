@@ -19,6 +19,8 @@ export default function TopBar({}: TopBarProps) {
   // Initialize menu position off-screen
   useEffect(() => {
     menuAnimation.setValue(0);
+    // Ensure menu is closed on mount
+    setMenuVisible(false);
   }, []);
 
   const toggleMenu = () => {
@@ -57,7 +59,7 @@ export default function TopBar({}: TopBarProps) {
   
   return (
     <>
-      <View style={[styles.container, { paddingTop: statusBarHeight }]}>
+      <View style={[styles.container, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: statusBarHeight }]}>
         <Image 
           source={require('../assets/images/Logo4.png')} 
           style={styles.logo} 
@@ -71,71 +73,73 @@ export default function TopBar({}: TopBarProps) {
         </TouchableOpacity>
       </View>
       
-      {/* Hamburger Menu Overlay */}
+      {/* Hamburger Menu Overlay and Menu - Only render when visible */}
       {menuVisible && (
-        <TouchableOpacity 
-          style={styles.overlay} 
-          activeOpacity={1} 
-          onPress={toggleMenu}
-        />
-      )}
-      
-      {/* Slide-in Navigation Menu with enhanced styling */}
-      <Animated.View 
-        style={[
-          styles.menuContainer,
-          { 
-            transform: [{ translateX: menuTranslateX }],
-            shadowColor: menuVisible ? '#000' : '#00000000'
-          }
-        ]}
-      >
-        <View style={styles.navItems}>
+        <>
           <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
+            style={styles.overlay} 
+            activeOpacity={1} 
+            onPress={toggleMenu}
+          />
+          
+          {/* Slide-in Navigation Menu with enhanced styling */}
+          <Animated.View 
+            style={[
+              styles.menuContainer,
+              { 
+                transform: [{ translateX: menuTranslateX }],
+                shadowColor: '#000'
+              }
+            ]}
           >
-            <Image 
-              source={require('../assets/images/bussiness-man.png')} 
-              style={styles.navIcon} 
-            />
-            <Text style={styles.navText}>Profile</Text>
-          </TouchableOpacity>
+            <View style={styles.navItems}>
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
+              >
+                <Image 
+                  source={require('../assets/images/bussiness-man.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Profile</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
-          >
-            <Image 
-              source={require('../assets/images/Donate.png')} 
-              style={styles.navIcon} 
-            />
-            <Text style={styles.navText}>Donate</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
-          >
-            <Image 
-              source={require('../assets/images/caravan.png')} 
-              style={styles.navIcon} 
-            />
-            <Text style={styles.navText}>MyWagon</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => handleNavigation('/')}
-          >
-            <Image 
-              source={require('../assets/images/plot.png')} 
-              style={styles.navIcon} 
-            />
-            <Text style={styles.navText}>Home</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
+              >
+                <Image 
+                  source={require('../assets/images/Donate.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Donate</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
+              >
+                <Image 
+                  source={require('../assets/images/caravan.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>MyWagon</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/')}
+              >
+                <Image 
+                  source={require('../assets/images/plot.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Home</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </>
+      )}
     </>
   );
 }
