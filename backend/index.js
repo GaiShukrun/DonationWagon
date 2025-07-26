@@ -1140,6 +1140,8 @@ app.get('/driver/available-pickups', auth, async (req, res) => {
     }
 });
 
+
+
 // Assign pickup to driver
 app.post('/driver/assign-pickup/:donationId', auth, async (req, res) => {
     try {
@@ -1284,6 +1286,28 @@ app.get('/driver/active-pickups', auth, async (req, res) => {
     } catch (error) {
         console.error('Active pickups error:', error);
         res.status(500).json({ message: 'Error fetching active pickups', error: error.message });
+    }
+});
+
+// Get driver's completed donations
+app.get('/driver/completed-donations', auth, async (req, res) => {
+    try {
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Find all donations assigned to this driver and completed
+        const completedDonations = await Donation.find({
+            assignedDriver: user._id,
+            status: 'completed'
+        }).populate('userId', 'firstname lastname');
+
+        res.json(completedDonations);
+    } catch (error) {
+        console.error('Completed donations error:', error);
+        res.status(500).json({ message: 'Error fetching completed donations', error: error.message });
     }
 });
 

@@ -74,6 +74,16 @@ Donation Wagon connects donors with those in need through an intuitive mobile pl
 - **Impact Metrics**: Visual representation of community impact
 - **Exploration**: Discover donation opportunities and community needs
 
+## Create a Donation
+<img src="https://github.com/GaiShukrun/DonationWagon/blob/bug-fixes/assets/gifs/Donation%20GIF.gif" width="400"/>
+
+## Schedule Donation
+<img src="https://github.com/GaiShukrun/DonationWagon/blob/bug-fixes/assets/gifs/Schedule%20GIF.gif" width="400"/>
+
+## Driver Dashboard
+<img src="https://github.com/GaiShukrun/DonationWagon/blob/bug-fixes/assets/gifs/Driver%20GIF.gif" width="400"/>
+
+
 ## Quick Start
 
 The easiest way to start the app is to use the included batch file:
