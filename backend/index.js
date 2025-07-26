@@ -1347,7 +1347,10 @@ app.get('/leaderboard', async (req, res) => {
             .sort({ points: -1 })
             .limit(50);
 
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        // Use https for production environment (Render)
+        const isProduction = req.get('host').includes('onrender.com');
+        const protocol = isProduction ? 'https' : req.protocol;
+        const baseUrl = `${protocol}://${req.get('host')}`;
         
         res.json({
             success: true,
