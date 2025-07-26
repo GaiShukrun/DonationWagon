@@ -1338,6 +1338,28 @@ app.get("/gemini-api-key", (req, res) => {
   res.json({apiKey: process.env.GEMINI_API_KEY});
 });
 
+// Get driver's completed donations
+app.get('/driver/completed-donations', auth, async (req, res) => {
+    try {
+        const user = req.user;
+
+        if (user.userType !== 'driver') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Find all completed donations assigned to this driver
+        const completedDonations = await Donation.find({
+            assignedDriver: user._id,
+            status: 'completed'
+        }).populate('userId', 'firstname lastname');
+
+        res.json(completedDonations);
+    } catch (error) {
+        console.error('Completed donations error:', error);
+        res.status(500).json({ message: 'Error fetching completed donations', error: error.message });
+    }
+});
+
 // Get combined leaderboard
 app.get('/leaderboard', async (req, res) => {
     try {
