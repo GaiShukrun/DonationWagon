@@ -15,13 +15,13 @@ export default function TabLayout() {
     // Use multiple methods to ensure the status bar is completely hidden
     StatusBar.setHidden(true, 'none');
     StatusBar.setTranslucent(true);
-    StatusBar.setBackgroundColor('transparent');
+    StatusBar.setBackgroundColor('#00000000');
     
     return () => {
       // This cleanup is important for when the component unmounts
       StatusBar.setHidden(true, 'none');
       StatusBar.setTranslucent(true);
-      StatusBar.setBackgroundColor('transparent');
+      StatusBar.setBackgroundColor('#00000000');
     };
   }, []);
 

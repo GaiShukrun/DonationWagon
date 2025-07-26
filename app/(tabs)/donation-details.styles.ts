@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
       paddingVertical: 8,
       paddingHorizontal: 20,
       borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
+      borderBottomColor: '#00000000',
     },
     activeTab: {
       borderBottomColor: '#BE3E28',
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
       paddingHorizontal: 5,
       paddingVertical: 1,
       borderBottomWidth: 0,
-      borderBottomColor: 'transparent',
+      borderBottomColor: '#00000000',
     },
     backButton: {
       marginRight: 16,

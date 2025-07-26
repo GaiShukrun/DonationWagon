@@ -179,7 +179,7 @@ const DonationScreen = () => {
               >
                 <View style={[styles.categoryIconContainer, { backgroundColor: '#BE3E58' }]}>
                 <Image 
-                              source={require('../../assets/images/clothes1.png')} 
+                              source={require('../../assets/images/clothes.png')} 
                               style={styles.navIcon1} 
                             />
                 </View>

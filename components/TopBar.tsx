@@ -86,7 +86,7 @@ export default function TopBar({}: TopBarProps) {
           styles.menuContainer,
           { 
             transform: [{ translateX: menuTranslateX }],
-            shadowColor: menuVisible ? '#000' : 'transparent'
+            shadowColor: menuVisible ? '#000' : '#00000000'
           }
         ]}
       >

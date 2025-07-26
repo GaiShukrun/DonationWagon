@@ -27,7 +27,7 @@ export default function RootLayout() {
   useEffect(() => {
     StatusBar.setHidden(true, 'none');
     StatusBar.setTranslucent(true);
-    StatusBar.setBackgroundColor('transparent');
+    StatusBar.setBackgroundColor('#00000000');
   }, []);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function RootLayout() {
       // Hide status bar globally with multiple methods to ensure it works
       StatusBar.setHidden(true, 'none');
       StatusBar.setTranslucent(true);
-      StatusBar.setBackgroundColor('transparent');
+      StatusBar.setBackgroundColor('#00000000');
     }
   }, [loaded]);
 
