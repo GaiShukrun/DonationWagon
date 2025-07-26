@@ -28,6 +28,7 @@ export default function DriverLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
+          display: 'none',
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
@@ -59,4 +60,4 @@ export default function DriverLayout() {
       />
     </Tabs>
   );
-} 
+}

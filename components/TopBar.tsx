@@ -76,121 +76,119 @@ export default function TopBar({}: TopBarProps) {
       
       {/* Hamburger Menu Overlay and Menu - Only render when visible */}
       {menuVisible && (
-        <>
-          <TouchableOpacity 
-            style={styles.overlay} 
-            activeOpacity={1} 
-            onPress={toggleMenu}
-          />
-          
-          {/* Slide-in Navigation Menu with enhanced styling */}
-          <Animated.View 
-            style={[
-              styles.menuContainer,
-              { 
-                transform: [{ translateX: menuTranslateX }],
-                shadowColor: '#000'
-              }
-            ]}
-          >
-            <View style={styles.navItems}>
-              {userType === 'driver' ? (
-                <>
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/(driver)/driver-dashboard')}
-                  >
-                    <Image 
-                      source={require('../assets/images/delivery.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Dashboard</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/(driver)/active-pickups')}
-                  >
-                    <Image 
-                      source={require('../assets/images/pickup.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Active Pickups</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/(driver)/completed-pickups')}
-                  >
-                    <Image 
-                      source={require('../assets/images/pickup.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Completed Pickups</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/(driver)/profile')}
-                  >
-                    <Image 
-                      source={require('../assets/images/bussiness-man.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Profile</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
-                  >
-                    <Image 
-                      source={require('../assets/images/bussiness-man.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Profile</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
-                  >
-                    <Image 
-                      source={require('../assets/images/Donate.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Donate</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
-                  >
-                    <Image 
-                      source={require('../assets/images/caravan.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>MyWagon</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.navItem}
-                    onPress={() => handleNavigation('/')}
-                  >
-                    <Image 
-                      source={require('../assets/images/plot.png')} 
-                      style={styles.navIcon} 
-                    />
-                    <Text style={styles.navText}>Home</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </Animated.View>
-        </>
+        <TouchableOpacity 
+          style={styles.overlay} 
+          activeOpacity={1} 
+          onPress={toggleMenu}
+        />
       )}
+      
+      {/* Slide-in Navigation Menu with enhanced styling */}
+      <Animated.View 
+        style={[
+          styles.menuContainer,
+          { 
+            transform: [{ translateX: menuTranslateX }],
+            shadowColor: menuVisible ? '#000' : '#00000000'
+          }
+        ]}
+      >
+        <View style={styles.navItems}>
+          {userType === 'driver' ? (
+            <>
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(driver)/driver-dashboard')}
+              >
+                <Image 
+                  source={require('../assets/images/delivery.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Dashboard</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(driver)/active-pickups')}
+              >
+                <Image 
+                  source={require('../assets/images/pickup.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Active Pickups</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(driver)/completed-pickups')}
+              >
+                <Image 
+                  source={require('../assets/images/pickup.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Completed Pickups</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(driver)/profile')}
+              >
+                <Image 
+                  source={require('../assets/images/bussiness-man.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/')}
+              >
+                <Image 
+                  source={require('../assets/images/plot.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Home</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('/(tabs)/donate-tab', 'Please sign in to access donation features')}
+              >
+                <Image 
+                  source={require('../assets/images/Donate.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Donate</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('schedule', 'Please sign in to access your donation schedule')}
+              >
+                <Image 
+                  source={require('../assets/images/caravan.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>My Wagon</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navItem}
+                onPress={() => handleNavigation('profile', 'Please sign in to view your profile')}
+              >
+                <Image 
+                  source={require('../assets/images/bussiness-man.png')} 
+                  style={styles.navIcon} 
+                />
+                <Text style={styles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </Animated.View>
     </>
   );
 }
