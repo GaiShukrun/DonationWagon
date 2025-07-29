@@ -4,7 +4,7 @@
     "slug": "DonationWagon",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/caravan2.png",
+    "icon": "./assets/images/caravan2.jpg",
     "jsEngine": "jsc",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/caravan2.png",
+        "foregroundImage": "./assets/images/caravan2.jpg",
         "backgroundColor": "#00000000"
       },
       "package": "com.atzulo.DonationWagon",
