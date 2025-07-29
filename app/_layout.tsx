@@ -1,3 +1,4 @@
+import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -7,7 +8,6 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { View, LogBox, StatusBar } from 'react-native';
-import { useRouter } from 'expo-router';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TopBar from '@/components/TopBar';
@@ -21,12 +21,27 @@ LogBox.ignoreLogs([
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const navigationRef = React.useRef<any>(null);
   const colorScheme = useColorScheme();
-  const router = useRouter();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   
+  // Handle Android hardware back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const onBackPress = () => {
+      // Use navigation ref if available
+      if (navigationRef.current && navigationRef.current.canGoBack && navigationRef.current.canGoBack()) {
+        navigationRef.current.goBack();
+        return true; // handled
+      }
+      return false; // allow default (exit app)
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, []);
+
   // Force hide status bar completely at app startup and enforce LTR layout
   useEffect(() => {
     // Force Left-to-Right layout direction to prevent mirroring in APK builds
@@ -47,23 +62,6 @@ export default function RootLayout() {
       StatusBar.setBackgroundColor('#00000000');
     }
   }, [loaded]);
-
-  // Handle Android back button
-  useEffect(() => {
-    const backAction = () => {
-      // Check if we can go back in the navigation stack
-      if (router.canGoBack()) {
-        router.back();
-        return true; // Prevent default behavior (exit app)
-      }
-      // If we're at the root, don't exit the app, stay on current screen
-      return true;
-    };
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-    return () => backHandler.remove();
-  }, [router]);
 
   // Disable error handling in global scope
   useEffect(() => {
