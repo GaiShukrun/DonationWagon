@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
   passwordContainer: {
     position: 'relative',
     width: '100%',
+    marginBottom: 12,
   },
   passwordInput: {
     backgroundColor: '#fff',
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
     width: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
   },
   signInButton: {
     backgroundColor: '#BE3E28',

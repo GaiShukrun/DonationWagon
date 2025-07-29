@@ -2,11 +2,12 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { Platform, I18nManager } from 'react-native';
+import { Platform, I18nManager, BackHandler } from 'react-native';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { View, LogBox, StatusBar } from 'react-native';
+import { useRouter } from 'expo-router';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TopBar from '@/components/TopBar';
@@ -21,6 +22,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -45,6 +47,23 @@ export default function RootLayout() {
       StatusBar.setBackgroundColor('#00000000');
     }
   }, [loaded]);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      // Check if we can go back in the navigation stack
+      if (router.canGoBack()) {
+        router.back();
+        return true; // Prevent default behavior (exit app)
+      }
+      // If we're at the root, don't exit the app, stay on current screen
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, [router]);
 
   // Disable error handling in global scope
   useEffect(() => {
