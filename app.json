@@ -1,21 +1,28 @@
 {
   "expo": {
-    "name": "CircleOfGiving",
-    "slug": "CircleOfGiving",
+    "name": "DonationWagon",
+    "slug": "DonationWagon",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/caravan2.jpg",
+    "jsEngine": "jsc",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "backgroundColor": "#00000000",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/images/caravan2.jpg",
+        "backgroundColor": "#00000000"
+      },
+      "package": "com.atzulo.DonationWagon",
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 34,
+      "buildToolsVersion": "34.0.0"
+
     },
     "web": {
       "bundler": "metro",
@@ -27,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/caravan.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -42,6 +49,14 @@
       "disableErrorOverlay": true,
       "fastRefresh": true,
       "minifyEnabled": false
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5c124757-a038-4018-8d0e-016e00bd86c2"
+      }
     }
   }
 }

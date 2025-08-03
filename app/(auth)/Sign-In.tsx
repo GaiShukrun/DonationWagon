@@ -111,6 +111,8 @@ export default function SignIn() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              selectionColor="#BE3E28"
+              color = "#222"
             />
             <TouchableOpacity 
               style={styles.eyeIcon} 

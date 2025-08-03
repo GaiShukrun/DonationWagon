@@ -2,7 +2,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API base URL
-const API_URL = 'http://10.0.0.10:3000'; // Using the same URL as in AuthContext
+//const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
+
+const API_URL = 'https://donationwagon-2.onrender.com'; // Using the same URL as in AuthContext
 
 // Create axios instance
 const api = axios.create({

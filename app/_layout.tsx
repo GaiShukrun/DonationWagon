@@ -1,31 +1,65 @@
+import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
+import { Platform, I18nManager, BackHandler } from 'react-native';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { View, LogBox } from 'react-native';
+import { View, LogBox, StatusBar } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TopBar from '@/components/TopBar';
 
-// Disable yellow box warnings
-LogBox.ignoreAllLogs();
+// Suppress only the useInsertionEffect warning globally
+LogBox.ignoreLogs([
+  'Warning: useInsertionEffect must not schedule updates.'
+]);
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const navigationRef = React.useRef<any>(null);
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  
+  // Handle Android hardware back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const onBackPress = () => {
+      // Use navigation ref if available
+      if (navigationRef.current && navigationRef.current.canGoBack && navigationRef.current.canGoBack()) {
+        navigationRef.current.goBack();
+        return true; // handled
+      }
+      return false; // allow default (exit app)
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, []);
+
+  // Force hide status bar completely at app startup and enforce LTR layout
+  useEffect(() => {
+    // Force Left-to-Right layout direction to prevent mirroring in APK builds
+    I18nManager.allowRTL(false);
+    I18nManager.forceRTL(false);
+    
+    StatusBar.setHidden(true, 'none');
+    StatusBar.setTranslucent(true);
+    StatusBar.setBackgroundColor('#00000000');
+  }, []);
 
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      // Hide status bar globally with multiple methods to ensure it works
+      StatusBar.setHidden(true, 'none');
+      StatusBar.setTranslucent(true);
+      StatusBar.setBackgroundColor('#00000000');
     }
   }, [loaded]);
 
@@ -63,14 +97,18 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, backgroundColor: 'black'}}>
-            <StatusBar backgroundColor="black" style="light" />
+          <View style={{ flex: 1, direction: 'ltr', backgroundColor: colorScheme === 'dark' ? 'black' : '#FAF3F0', padding: 0 }}>
             <TopBar />
             <Stack 
               screenOptions={{
                 headerShown: false,
                 navigationBarHidden: true,
-                contentStyle: { backgroundColor: '#FAF3F0' }
+                contentStyle: { backgroundColor: '#FAF3F0' },
+                statusBarHidden: true,
+                statusBarStyle: 'light',
+                statusBarTranslucent: true,
+                statusBarAnimation: 'none',
+                presentation: 'transparentModal',
               }}
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />

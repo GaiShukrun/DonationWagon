@@ -62,7 +62,7 @@ const ScheduleScreen = () => {
         const pendingDonationIds = response.donations
           .filter(donation => donation.status === 'pending')
           .map(donation => donation._id);
-        console.log('response@@@@', pendingDonationIds);
+        
 
 
           
@@ -267,10 +267,22 @@ const ScheduleScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    
+    // Reset all input states
+    setSelectedDate(new Date());
+    setLocation({});
+    setUseGPS(false);
+    setDeliveryMessage('');
+    setShowDatePicker(false);
+    
     // Refresh donation data
     if (donationIds.length > 0) {
       await fetchDonations(donationIds);
+    } else {
+      // If no donationIds, fetch pending donations
+      await fetchPendingDonations();
     }
+    
     setRefreshing(false);
   };
 
@@ -292,9 +304,7 @@ const ScheduleScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ width: 24 }} />
           <Text style={styles.headerTitle}>Schedule Pickup</Text>
-          <View style={{ width: 24 }} />
         </View>
 
         {isLoading ? (
@@ -310,7 +320,16 @@ const ScheduleScreen = () => {
               <Text style={styles.sectionTitle}>Donation Summary</Text>
               {user && user.id ? (
                 <View style={styles.donationCartContainer}>
-                  <DonationCart userId={user.id} schedule={true} />
+                  <DonationCart 
+                    userId={user.id} 
+                    schedule={true} 
+                    onDonationDeleted={(deletedId) => {
+                      // Remove the deleted donation ID from donationIds state
+                      setDonationIds(prev => prev.filter(id => id !== deletedId));
+                      // Also remove from donations state
+                      setDonations(prev => prev.filter(donation => donation._id !== deletedId));
+                    }}
+                  />
                 </View>
               ) : (
                 <Text style={styles.errorText}>Unable to load user information</Text>
@@ -487,12 +506,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
     backgroundColor: '#FCF2E9',
   },
   headerTitle: {
@@ -568,22 +587,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scheduleButton: {
-    backgroundColor: '#65a765',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#65a765', // Keep the original green color
+    borderRadius: 16, // Match submitButton style
+    padding: 16, // Match submitButton style
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 16,
+    flexDirection: 'row',
+    margin: 10,
     marginTop: 24,
     marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8, // shadow-lg equivalent
   },
   disabledButton: {
     backgroundColor: '#A0AFA0',
   },
   scheduleButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   locationButtonsContainer: {
     flexDirection: 'row',

@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 
 // Base URL for API requests
-const API_URL = 'http://10.0.0.10:3000'; // Updated to use your computer's actual IP address
+// const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
+
+const API_URL = 'https://donationwagon-2.onrender.com'; // Updated to use your computer's actual IP address
 // // Vlad
 // const API_URL = 'http://10.0.0.41:3000';
 

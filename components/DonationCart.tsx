@@ -35,9 +35,11 @@ type DonationItem = {
 
 type DonationCartProps = {
   userId: string;
+  schedule?: boolean;
+  onDonationDeleted?: (donationId: string) => void;
 };
 
-const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean }) => {
+const DonationCart = ({ userId, schedule, onDonationDeleted }: DonationCartProps) => {
   const api = useApi();
   const router = useRouter();
   const [donations, setDonations] = useState<DonationItem[]>([]);
@@ -46,7 +48,7 @@ const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertCallback, setAlertCallback] = useState<(() => void) | undefined>(undefined);
+  const [pendingDeletionId, setPendingDeletionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -218,38 +220,55 @@ const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean
   const handleDeleteDonation = (donationId: string) => {
     setAlertTitle('Confirm Deletion');
     setAlertMessage('Are you sure you want to delete this donation?');
+    setPendingDeletionId(donationId);
     setAlertVisible(true);
+  };
+
+  const confirmDeleteDonation = async () => {
+    if (!pendingDeletionId) return;
     
-    // Set callback for confirmation
-    setAlertCallback(async () => {
-      setIsLoading(true);
-      try {
-        // Log the full URL for debugging
-        console.log(`Attempting to delete donation with ID: ${donationId}`);
+    // Close the confirmation dialog first
+    setAlertVisible(false);
+    setIsLoading(true);
+    
+    try {
+      console.log(`Attempting to delete donation with ID: ${pendingDeletionId}`);
+      
+      const response = await api.delete(`/donation/${pendingDeletionId}`);
+      console.log('Delete response:', response);
+      
+      if (response && response.success) {
+        // Remove the deleted donation from state
+        setDonations(donations.filter(donation => donation._id !== pendingDeletionId));
         
-        const response = await api.delete(`/donation/${donationId}`);
-        console.log('Delete response:', response);
+        // Notify parent component about the deletion
+        if (onDonationDeleted && pendingDeletionId) {
+          onDonationDeleted(pendingDeletionId);
+        }
         
-        if (response && response.success) {
-          // Remove the deleted donation from state
-          setDonations(donations.filter(donation => donation._id !== donationId));
+        // Show success message after a brief delay
+        setTimeout(() => {
           setAlertTitle('Success');
           setAlertMessage('Donation has been deleted successfully.');
-          setAlertCallback(undefined); // Clear the callback
+          setPendingDeletionId(null);
           setAlertVisible(true);
-        } else {
-          throw new Error('Failed to delete donation');
-        }
-      } catch (error) {
-        console.error('Error deleting donation:', error);
+        }, 300);
+      } else {
+        throw new Error('Failed to delete donation');
+      }
+    } catch (error) {
+      console.error('Error deleting donation:', error);
+      
+      // Show error message after a brief delay
+      setTimeout(() => {
         setAlertTitle('Error');
         setAlertMessage('Failed to delete donation. Please try again.');
-        setAlertCallback(undefined); // Clear the callback
+        setPendingDeletionId(null);
         setAlertVisible(true);
-      } finally {
-        setIsLoading(false);
-      }
-    });
+      }, 300);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderDonationItem = ({ item }: { item: DonationItem }) => {
@@ -363,10 +382,11 @@ const DonationCart = ({ userId, schedule }: { userId: string, schedule?: boolean
         message={alertMessage}
         onClose={() => {
           setAlertVisible(false);
-          if (alertCallback) alertCallback();
+          setPendingDeletionId(null);
         }}
-        confirmText={alertCallback ? "Yes, Delete" : "OK"}
-        showCancelButton={!!alertCallback}
+        onConfirm={pendingDeletionId ? confirmDeleteDonation : undefined}
+        confirmText={pendingDeletionId ? "Yes, Delete" : "OK"}
+        showCancelButton={!!pendingDeletionId}
         cancelText="Cancel"
       />
     </View>

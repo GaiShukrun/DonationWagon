@@ -37,17 +37,19 @@ export default function ProfileScreen() {
     pickups: 0
   });
 
-  // Trigger refresh of donation cart when screen is focused
+  // Trigger refresh of donation cart and stats when screen is focused
   useFocusEffect(
     useCallback(() => {
-      const refreshDonationCart = async () => {
+      const refreshData = async () => {
         if (isUserLoggedIn && user && user.id) {
-          console.log('Profile screen focused, refreshing donation cart...');
+          console.log('Profile screen focused, refreshing donation cart and stats...');
           await AsyncStorage.setItem('donationCartNeedsRefresh', 'true');
+          // Also refresh user stats to update "In Progress" count
+          fetchUserStats();
         }
       };
       
-      refreshDonationCart();
+      refreshData();
       
       return () => {}; // Cleanup function
     }, [isUserLoggedIn, user])
@@ -61,7 +63,7 @@ export default function ProfileScreen() {
         // If profileImage is a GridFS ID, construct the full URL
         if (typeof user.profileImage === 'string' && user.profileImage.match(/^[0-9a-fA-F]{24}$/)) {
           // This is a MongoDB ObjectId format, so it's a GridFS reference
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${user.profileImage}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${user.profileImage}`;
           console.log('Setting profile image URL:', imageUrl);
           setProfileImage(imageUrl);
         } else {
@@ -104,7 +106,7 @@ export default function ProfileScreen() {
           }
         } else {
           // It might be just the GridFS ID
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${savedImage}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${savedImage}`;
           setProfileImage(imageUrl);
         }
       }
@@ -198,7 +200,7 @@ export default function ProfileScreen() {
         // If the backend returns a profile image ID, construct the full URL with cache busting
         if (result.user && result.user.profileImage) {
           const timestamp = new Date().getTime();
-          const imageUrl = `http://10.0.0.10:3000/profile-image/${result.user.profileImage}?t=${timestamp}`;
+          const imageUrl = `https://donationwagon-2.onrender.com/profile-image/${result.user.profileImage}?t=${timestamp}`;
           console.log('Setting profile image with cache busting URL:', imageUrl);
           setProfileImage(imageUrl);
           await AsyncStorage.setItem('profileImageUri', imageUrl);

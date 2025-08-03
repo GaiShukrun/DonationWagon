@@ -179,7 +179,7 @@ const DonationScreen = () => {
               >
                 <View style={[styles.categoryIconContainer, { backgroundColor: '#BE3E58' }]}>
                 <Image 
-                              source={require('../../assets/images/clothes1.png')} 
+                              source={require('../../assets/images/clothes.png')} 
                               style={styles.navIcon1} 
                             />
                 </View>
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 16,
+    padding: 1,
     backgroundColor: '#FCF2E9',
   },
   titleContainer: {
@@ -407,17 +407,19 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     width: windowWidth * 0.44,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'column',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   categoryIconContainer: {
     padding: 12,
