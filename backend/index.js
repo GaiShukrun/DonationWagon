@@ -12,6 +12,7 @@ const mongoose = require('mongoose');
 const { Readable } = require('stream');
 const multer = require('multer');
 const upload = multer();
+const { GoogleGenAI } = require("@google/genai");
 
 // Connect to MongoDB
 connectDB();
@@ -1073,12 +1074,7 @@ function rgbToHex(r, g, b) {
   ].join('');
 }
 
-// Endpoint to get API keys for frontend
-app.get('/api/config', (req, res) => {
-  res.json({
-    huggingFaceApiKey: process.env.HUGGING_FACE_API_KEY
-  });
-});
+
 
 // Driver specific endpoints
 
@@ -1358,8 +1354,52 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
-app.get("/gemini-api-key", (req, res) => {
-  res.json({apiKey: process.env.GEMINI_API_KEY});
+
+app.post("/analyze-with-gemini", async (req, res) => {
+  try {
+    const { analysisType, imageData, prompt } = req.body;
+    
+    if (!imageData || !analysisType || !prompt) {
+      return res.status(400).json({ error: "Missing required fields: analysisType, imageData, prompt" });
+    }
+    
+    // Use the API key directly on the server (secure)
+    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
+    // Convert base64 image data to File object
+    const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const imageFile = new File([buffer], "image.jpg", { type: "image/jpeg" });
+    
+    // Upload file to Gemini
+    const myfile = await genAI.files.upload({
+      file: imageFile,
+      config: { mimeType: "image/jpeg" }
+    });
+    
+    // Generate content with the specific model used in frontend
+    const generationResponse = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-thinking-exp-01-21",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
+            { text: prompt }
+          ]
+        }
+      ]
+    });
+    
+    // Send back only the result, never the key
+    res.json({ 
+      result: generationResponse.text?.trim(),
+      analysisType: analysisType 
+    });
+  } catch (error) {
+    console.error("Gemini analysis error:", error);
+    res.status(500).json({ error: "AI processing failed", details: error.message });
+  }
 });
 
 // Get driver's completed donations
