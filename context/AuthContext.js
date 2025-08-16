@@ -6,7 +6,7 @@ import { useApi } from '@/hooks/useApi';
 import { useApiUpload } from '@/hooks/useApiUpload';
 
 // API base URL
-//const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
+//const API_URL = 'http://10.0.0.12:3000'; // Updated to correct IP address
 
  const API_URL = 'https://donationwagon-2.onrender.com'; // Updated to correct IP address
 

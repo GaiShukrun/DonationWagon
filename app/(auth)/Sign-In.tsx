@@ -112,7 +112,7 @@ export default function SignIn() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               selectionColor="#BE3E28"
-              color = "#222"
+              
             />
             <TouchableOpacity 
               style={styles.eyeIcon} 
@@ -238,6 +238,8 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     fontSize: 16,
     paddingRight: 50, // Make room for the eye icon
+    color: '#222',
+    
   },
   eyeIcon: {
     position: 'absolute',
