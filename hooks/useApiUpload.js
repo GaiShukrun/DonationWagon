@@ -3,9 +3,9 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 
 // Base URL for API requests
-//const API_URL = 'http://10.0.0.10:3000'; // Updated to correct IP address
+//const API_URL = 'http://10.0.0.12:3000'; // Updated to correct IP address
 
- const API_URL = 'https://donationwagon-2.onrender.com'; // Using the same IP as in useApi.js
+const API_URL = 'https://donationwagon-2.onrender.com'; // Using the same IP as in useApi.js
 
 /**
  * Custom hook for uploading files to the API

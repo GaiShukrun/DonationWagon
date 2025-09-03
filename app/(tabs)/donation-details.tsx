@@ -27,8 +27,7 @@ import { CustomAlertMessage } from '@/components/CustomAlertMessage';
 import DonationCart from '@/components/DonationCart';
 import ClothingAnalyzer from '@/components/ClothingAnalyzer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleGenAI } from "@google/genai";
-import { createUserContent, createPartFromUri } from '@google/genai';
+
 import { PanResponder, Animated } from 'react-native';
 
 const SWIPE_THRESHOLD = 70;
@@ -54,7 +53,7 @@ export default function DonationDetails() {
   const [showClothingAnalyzer, setShowClothingAnalyzer] = useState(false);
   const [detectingNow, setDetectingNow] = useState(false);
   const [activeClothingTab, setActiveClothingTab] = useState(0); // 0 for first page, 1 for second page
-  const [ai, setAI] = useState<GoogleGenAI | null>(null);
+
 
   // Set the active form and initialize donation based on the donationType parameter
   useEffect(() => {
@@ -78,20 +77,7 @@ export default function DonationDetails() {
   const [showToyTypeOptions, setShowToyTypeOptions] = useState(false);
   const [currentItemId, setCurrentItemId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function loadKey() {
-      try {
-        const response = await api.get("/gemini-api-key");
-        const apiKey = response.apiKey;
-        const aiInstance = new GoogleGenAI({ apiKey });
-        setAI(aiInstance);
-      } catch (err) {
-        console.error("Error loading API key:", err);
-      }
-    }
 
-    loadKey();
-  }, []);
 
   // Helper function to determine which tab a clothing type belongs to
   const getClothingTypeTab = (clothingType: string): number => {
@@ -115,37 +101,26 @@ export default function DonationDetails() {
   };
 
   async function detectAICloth(imageUri: string, itemId: number) {
-    if (!ai) {
-      console.error("AI instance not initialized");
-      return;
-    }
-    
     setDetectingNow(true);
     
     try {
+      // Convert image to base64
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
-      
-      const myfile = await ai.files.upload({
-        file: imageFile,
-        config: { mimeType: "image/jpeg" }
+      const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
       });
       
-      const generationResponse = await ai.models.generateContent({
-        model: "gemini-2.0-flash-thinking-exp-01-21",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
-              { text: "Identify this clothing item with: 1) specific cloth type (e.g., t-shirt, jeans, dress, jacket), 2) primary color in hex format, 3) size (XS, S, M, L, XL, XXL), and 4) likely gender (men, women, unisex). Return only the exact format: \"type,hex_color,size,gender\" with no other words or symbols. Example: \"t-shirt,#0000FF,L,men\"" }
-            ]
-          }
-        ]
+      // Call secure backend endpoint
+      const analysisResponse = await (api as any).post("/analyze-with-gemini", {
+        analysisType: "clothing",
+        imageData: base64Data,
+        prompt: "Identify this clothing item with: 1) specific cloth type (e.g., t-shirt, jeans, dress, jacket), 2) primary color in hex format, 3) size (XS, S, M, L, XL, XXL), and 4) likely gender (men, women, unisex). Return only the exact format: \"type,hex_color,size,gender\" with no other words or symbols. Example: \"t-shirt,#0000FF,L,men\""
       });
       
-      const aiText = generationResponse.text?.trim().toLowerCase();
+      const aiText = analysisResponse.result?.toLowerCase();
       console.log("AI response:", aiText);
 
       if (aiText && aiText.includes(',')) {
@@ -278,44 +253,33 @@ export default function DonationDetails() {
   }
 
   async function detectAIToy(imageUri: string, itemId: number) {
-    if (!ai) {
-      console.error("AI instance not initialized");
-      return;
-    }
-    
     setDetectingNow(true);
     
     try {
+      // Convert image to base64
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
-      
-      const myfile = await ai.files.upload({
-        file: imageFile,
-        config: { mimeType: "image/jpeg" }
+      const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
       });
       
-      const generationResponse = await ai.models.generateContent({
-        model: "gemini-2.0-flash-thinking-exp-01-21",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { fileData: { fileUri: myfile.uri, mimeType: myfile.mimeType } },
-              { text: "Identify this toy with: 1) name (e.g., Lego set, Barbie doll), 2) description (brief details about the toy), 3) age group (infant, toddler, child, teen), and 4) condition (new, like new, used, needs repair). Return only the exact format: \"name,description,age group,condition\" with no other words or symbols. Example: \"Lego set,Classic brick building set,child,like new\"" }
-            ]
-          }
-        ]
+      // Call secure backend endpoint
+      const analysisResponse = await (api as any).post("/analyze-with-gemini", {
+        analysisType: "toy",
+        imageData: base64Data,
+        prompt: "Identify this toy with: 1) name (e.g., Lego set, Barbie doll), 2) description (brief details about the toy), 3) age group (infant, toddler, child, teen), and 4) condition (new, like new, used, needs repair). Return only the exact format: \"name,description,age group,condition\" with no other words or symbols. Example: \"Lego set,Classic brick building set,child,like new\""
       });
       
-      const aiText = generationResponse.text?.trim().toLowerCase();
+      const aiText = analysisResponse.result?.toLowerCase();
       console.log("AI response:", aiText);
       if (aiText && aiText.includes(',')) {
-        const [name, description, ageGroup, condition] = aiText.split(',').map(part => part.trim());
+        const [name, description, ageGroup, condition] = aiText.split(',').map((part: string) => part.trim());
         
         // Format condition to match radio button values
         const formattedCondition = condition 
-          ? condition.split(' ').map(word => 
+          ? condition.split(' ').map((word: string) => 
               word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ')
           : condition;
